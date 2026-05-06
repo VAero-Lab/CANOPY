@@ -32,5 +32,24 @@ from .helpers import (
     make_zoned_stations,
     make_graded_stations,
 )
+from .fem import build_structural_graph, export_to_json
+
+__all__ = [
+    'Wing',
+    'Seg',
+    'SubParams',
+    'BranchDef',
+    'Station',
+    'TrunkSpec',
+    'TreeGenerator',
+    'ConvWB',
+    'Viz',
+    'make_diagonal_only_stations',
+    'make_mixed_stations',
+    'make_zoned_stations',
+    'make_graded_stations',
+    'build_structural_graph',
+    'export_to_json',
+]
 
 __version__ = "0.1.0"

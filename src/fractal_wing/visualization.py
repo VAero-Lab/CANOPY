@@ -147,23 +147,27 @@ class Viz:
     def _web3d(self, ax, segs):
         if not segs:
             return
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         mx = max(s.level for s in segs)
+        polys = []
+        colors = []
         for s in segs:
             t = s.level / max(mx, 1)
-            c = plt.cm.copper(0.2 + 0.6 * t)
+            c = plt.cm.YlOrRd(0.2 + 0.7 * t)
             zu0, zl0 = self.w.z_at(s.p0[0], s.p0[1])
             zu1, zl1 = self.w.z_at(s.p1[0], s.p1[1])
-            ax.plot(
-                [s.p0[0], s.p1[0]], [s.p0[1], s.p1[1]], [zu0, zu1],
-                color=c, lw=0.7, alpha=0.7,
-            )
-            ax.plot(
-                [s.p0[0], s.p1[0]], [s.p0[1], s.p1[1]], [zl0, zl1],
-                color=c, lw=0.7, alpha=0.7,
-            )
-            for px, py in [(s.p0[0], s.p0[1]), (s.p1[0], s.p1[1])]:
-                zu, zl = self.w.z_at(px, py)
-                ax.plot([px, px], [py, py], [zl, zu], color=c, lw=0.3, alpha=0.4)
+            
+            vtx = [
+                (s.p0[0], s.p0[1], zl0),
+                (s.p1[0], s.p1[1], zl1),
+                (s.p1[0], s.p1[1], zu1),
+                (s.p0[0], s.p0[1], zu0)
+            ]
+            polys.append(vtx)
+            colors.append(c)
+            
+        collection = Poly3DCollection(polys, facecolors=colors, edgecolors='none', alpha=0.8)
+        ax.add_collection3d(collection)
 
     def _xs(self, ax, segs, eta):
         ys = eta * self.w.b

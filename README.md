@@ -12,6 +12,7 @@ A professional, modularized Python package for the generation of fractal tree-li
 - **Multi-Trunk Support**: Generate complex designs with multiple independent trunks while maintaining global crossing constraints.
 - **Spanwise-zoned & Graded Parameters**: Built-in factory helpers to enable root-to-tip variation and zoned behavior.
 - **Self-intersection Control**: Automated segment pruning to avoid structural intersections.
+- **FEM Structural Integration**: Export clean node-element-property graph topology for immediate loading into Finite Element Method solvers as 2D shells.
 
 ## Installation
 
@@ -57,9 +58,13 @@ spec = fw.TrunkSpec(chord_frac=0.5, stations=stations, allow_crossing=False)
 gen = fw.TreeGenerator(wing)
 segments = gen.generate(spec)
 
-# 5. Visualize
+# 5. Export to FEM structural graph (Nodes, Shell Elements, Properties)
+graph = fw.build_structural_graph(segments, tol=1e-6)
+fw.export_to_json(graph, "fractal_mesh.json")
+
+# 6. Visualize
 viz = fw.Viz(wing)
-viz.view2d(segments, "Zoned Fractal Wing")
+viz.view3d(segments, "Zoned Fractal Wing")
 ```
 
 ## Examples
@@ -70,6 +75,7 @@ The `examples/` directory contains demonstration scripts covering core capabilit
 - `ex03_non_uniform_spacing.py`: Compares different distribution laws (uniform vs. non-uniform).
 - `ex04_organic_structures.py`: Synthesizes deep tree-like structures with graded parameters.
 - `ex05_crossing_control.py`: Demonstrates the self-intersection pruning logic (`allow_crossing`).
+- `ex06_fem_export.py`: Extracts the gapless mathematical topology and exports it as a JSON structural graph.
 
 ## License
 

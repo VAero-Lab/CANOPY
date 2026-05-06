@@ -10,7 +10,7 @@ Each configuration is shown side-by-side: crossing ON vs OFF.
 import os
 import copy
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg') # Commented out to allow interactive plotting (plt.show)
 import matplotlib.pyplot as plt
 import numpy as np
 import fractal_wing as fw
@@ -219,10 +219,22 @@ def main():
         f'Crossing ON ({r["ON"][1]["n"]} segs)',
         f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
     )
-    fig.suptitle('Organic zoned design — crossing comparison',
+
+    fig.suptitle('Zoned organic design — crossing comparison',
                  fontsize=13, fontweight='bold', y=1.02)
-    fig.savefig(f'{OUT}/ex05_06_organic_zoned.png', dpi=150, bbox_inches='tight')
+    fig.savefig(f'{OUT}/ex05_06_zoned_organic.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
+
+    fig = viz_fw.view3d(
+        r['OFF'][0],
+        title=f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
+    )
+    fig.suptitle('Zoned organic design — crossing OFF',
+                 fontsize=13, fontweight='bold', y=1.02)
+    plt.show()
+    plt.close(fig)
+
+
 
     # ════════════════════════════════════════════════════════════
     # 7. Multi-trunk + crossing OFF (global enforcement)

@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 from typing import List
 
-from .wing import Wing
+from .aeroshape_adapter import AeroWingAdapter
 from .structures import Seg, SubParams, BranchDef, Station, TrunkSpec, segments_cross
 
 
@@ -25,11 +25,11 @@ class TreeGenerator:
 
     Parameters
     ----------
-    wing : Wing
+    aerowing : AeroWingAdapter
         Wing geometry that defines the structural domain.
     """
 
-    def __init__(self, wing: Wing):
+    def __init__(self, wing: AeroWingAdapter):
         self.w = wing
         self.segs: List[Seg] = []
         self._id = 0
@@ -254,7 +254,7 @@ class ConvWB:
 
     Parameters
     ----------
-    w : Wing
+    w : AeroWingAdapter
         Wing geometry.
     nr : int
         Number of rib stations.
@@ -262,7 +262,7 @@ class ConvWB:
         Number of spanwise stiffeners (spar-to-spar).
     """
 
-    def __init__(self, w: Wing, nr: int = 12, ns: int = 3):
+    def __init__(self, w: AeroWingAdapter, nr: int = 12, ns: int = 3):
         self.w = w
         self.nr = nr
         self.ns = ns

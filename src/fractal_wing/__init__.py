@@ -20,8 +20,6 @@ Helpers:
     make_zoned_stations, make_graded_stations
 """
 
-from .airfoil import NACAFourDigit
-from .wing import Wing
 from .structures import Seg, SubParams, BranchDef, Station, TrunkSpec
 from .generator import TreeGenerator, ConvWB
 from .distributions import distribute_stations
@@ -32,10 +30,12 @@ from .helpers import (
     make_zoned_stations,
     make_graded_stations,
 )
-from .fem import build_structural_graph, export_to_json
+from .aeroshape_adapter import AeroWingAdapter
+from .cad_export import build_brep_webs
+from .meshing import GmshMesher
 
 __all__ = [
-    'Wing',
+    'AeroWingAdapter',
     'Seg',
     'SubParams',
     'BranchDef',
@@ -48,8 +48,8 @@ __all__ = [
     'make_mixed_stations',
     'make_zoned_stations',
     'make_graded_stations',
-    'build_structural_graph',
-    'export_to_json',
+    'build_brep_webs',
+    'GmshMesher',
 ]
 
 __version__ = "0.1.0"

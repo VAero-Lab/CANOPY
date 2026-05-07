@@ -14,6 +14,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import fractal_wing as fw
+from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output_crossing')
 os.makedirs(OUT, exist_ok=True)
@@ -47,7 +48,7 @@ def main():
     # 1. Basic sympodial — crossing ON vs OFF
     # ════════════════════════════════════════════════════════════
     print('\n  1. Sympodial — wingbox')
-    wing_wb = fw.Wing(bm='wingbox')
+    _, wing_wb = get_base_wing(bm='wingbox')
     viz_wb = fw.Viz(wing_wb)
 
     def symp_stations():
@@ -72,7 +73,7 @@ def main():
     # 2. Mixed mode — full wing (biggest effect)
     # ════════════════════════════════════════════════════════════
     print('\n  2. Mixed mode — full wing')
-    wing_fw = fw.Wing(bm='full_wing')
+    _, wing_fw = get_base_wing(bm='full_wing')
     viz_fw = fw.Viz(wing_fw)
 
     def mixed_stations():

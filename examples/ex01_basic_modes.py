@@ -9,13 +9,14 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import fractal_wing as fw
+from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output')
 os.makedirs(OUT, exist_ok=True)
 
 
 def main():
-    wing = fw.Wing(bm='wingbox')
+    aero_wing, wing = get_base_wing(bm='wingbox')
     viz = fw.Viz(wing)
 
     modes = ['monopodial', 'sympodial', 'dichotomous', 'monochasium']

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 — side-effect import
 from typing import Dict, List, Sequence
 
-from .wing import Wing
+from .aeroshape_adapter import AeroWingAdapter
 from .structures import Seg
 
 
@@ -19,11 +19,11 @@ class Viz:
 
     Parameters
     ----------
-    w : Wing
+    w : AeroWingAdapter
         Wing geometry used to draw planform boundaries.
     """
 
-    def __init__(self, w: Wing):
+    def __init__(self, w: AeroWingAdapter):
         self.w = w
 
     # ── multi-panel comparison ──────────────────────────────────
@@ -72,11 +72,18 @@ class Viz:
         ax.set_zlabel('z')
         ax.set_title(title, fontsize=12, fontweight='bold')
         ax.view_init(elev=elev, azim=azim)
-        r = max(self.w.b, self.w.cr) * 0.6
+        r = max(self.w.b, self.w.c(0)) * 0.6
         mx = self.w.xle(0.5) + self.w.c(0.5) * 0.4
+        x_range = (mx + r * 0.8) - (mx - r * 0.5)
+        y_range = (self.w.b + 0.5) - (-0.5)
+        z_range = (r * 0.15) - (-r * 0.15)
+        
         ax.set_xlim(mx - r * 0.5, mx + r * 0.8)
         ax.set_ylim(-0.5, self.w.b + 0.5)
         ax.set_zlim(-r * 0.15, r * 0.15)
+        
+        # Set proportional box aspect ratio (x, y, z)
+        ax.set_box_aspect((x_range, y_range, z_range))
         plt.tight_layout()
         return fig
 

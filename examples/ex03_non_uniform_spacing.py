@@ -14,13 +14,14 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import fractal_wing as fw
+from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output')
 os.makedirs(OUT, exist_ok=True)
 
 
 def main():
-    wing = fw.Wing(bm='wingbox')
+    _, wing = get_base_wing(bm='wingbox')
     viz = fw.Viz(wing)
 
     n_st = 12

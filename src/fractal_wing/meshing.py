@@ -1,24 +1,13 @@
 """
-Structured Meshing Module for Fractal Webs.
+Structured Meshing Module for Fractal Webs and Wing Skin.
 
-Generates structured quadrilateral (Quad4) shell meshes for fractal webs
-by sampling the exact NURBS boundaries from the AeroWingAdapter.
-
-To guarantee perfect conformality (node sharing) at intersections between webs,
-the vertical discretization (number of elements along Z) must be constant 
-across all webs. This is calculated automatically based on the target element size 
-and the maximum thickness of the wing.
+Generates structured quadrilateral (S4) shell meshes using Gmsh and OpenCASCADE.
+Supports unified meshing of internal fractal webs and outer wing skin, with
+Physical Groups for CalculiX ELSET management and per-web element grouping.
 """
-
-import numpy as np
-from scipy.spatial import cKDTree
-
-from .structures import Seg
-from .aeroshape_adapter import AeroWingAdapter
 
 import os
 import math
-import numpy as np
 
 try:
     import gmsh
@@ -31,9 +20,8 @@ class GmshMesher:
     """
     Generates structured Quad meshes for fractal webs using Gmsh and OpenCASCADE.
     
-    This mesher loads a B-Rep STEP file (typically exported via cad_export.build_brep_webs)
-    and perfectly maps a structured Quadrilateral (S4R) mesh onto the true NURBS curvature
-    of the wing skin boundaries.
+    This mesher loads B-Rep STEP files and perfectly maps a structured
+    Quadrilateral (S4) mesh onto the true NURBS curvature of the wing skin.
     
     Parameters
     ----------
@@ -47,16 +35,22 @@ class GmshMesher:
             
         self.target_size = target_elem_size
 
-    def mesh(self, step_filepath: str, output_inp: str, nz: int = None):
+    def mesh(self, webs_step: str, output_inp: str, skin_step: str = None,
+             web_properties: dict = None, nz: int = None):
         """
-        Generate global structured quad mesh from STEP file and export to CalculiX .inp.
+        Generate global structured quad mesh from STEP files and export to CalculiX .inp.
         
         Parameters
         ----------
-        step_filepath : str
+        webs_step : str
             Path to the input STEP file containing independent 2D shell webs.
         output_inp : str
             Path to write the resulting CalculiX .inp mesh file.
+        skin_step : str, optional
+            Path to the input STEP file containing the hollow wing skin faces.
+        web_properties : dict, optional
+            Per-web property dict from build_brep_webs(). Keys are web indices,
+            values are dicts with 'thickness', 'level', 'id'.
         nz : int, optional
             Number of elements along the vertical (Z) axis. If None, it calculates
             this dynamically based on the tallest vertical edge in the model.
@@ -66,24 +60,48 @@ class GmshMesher:
         dict
             Statistics about the generated mesh.
         """
-        if not os.path.exists(step_filepath):
-            raise FileNotFoundError(f"Input STEP file not found: {step_filepath}")
+        if not os.path.exists(webs_step):
+            raise FileNotFoundError(f"Input STEP file not found: {webs_step}")
             
         gmsh.initialize()
         gmsh.option.setNumber("General.Terminal", 0) # Suppress verbose output
         
-        # We must use OCC to import the STEP so we can query bounding boxes and properties
-        gmsh.model.occ.importShapes(step_filepath)
+        # We will track which surface belongs to which physical group
+        webs_surfs = []
+        skin_surfs = []
+        
+        # 1. Import Skin (if provided)
+        if skin_step and os.path.exists(skin_step):
+            tags = gmsh.model.occ.importShapes(skin_step)
+            skin_surfs = [t[1] for t in tags if t[0] == 2]
+            
+        # 2. Import Webs
+        tags = gmsh.model.occ.importShapes(webs_step)
+        webs_surfs = [t[1] for t in tags if t[0] == 2]
+        
         gmsh.model.occ.synchronize()
         
+        # 3. Create Physical Groups for ELSETs in CalculiX
+        # Aggregate groups for skin and all webs
+        if skin_surfs:
+            pg_skin = gmsh.model.addPhysicalGroup(2, skin_surfs)
+            gmsh.model.setPhysicalName(2, pg_skin, "WingSkin")
+            
+        if webs_surfs:
+            pg_webs = gmsh.model.addPhysicalGroup(2, webs_surfs)
+            gmsh.model.setPhysicalName(2, pg_webs, "FractalWebs")
+            
+        # Per-web Physical Groups (Web_0, Web_1, ...) for individual shell sections
+        for idx, surf_tag in enumerate(webs_surfs):
+            pg = gmsh.model.addPhysicalGroup(2, [surf_tag])
+            gmsh.model.setPhysicalName(2, pg, f"Web_{idx}")
+
         surfaces = gmsh.model.getEntities(2)
         if not surfaces:
             gmsh.finalize()
-            return {"nodes": 0, "elements": 0}
+            return {"n_nodes": 0, "n_elems": 0}
             
-        # 1. First Pass: Find global maximum vertical edge to enforce a constant nz
-        # A constant nz across all independent webs guarantees that nodes *could* align 
-        # at intersections for non-conformal tied contacts.
+        # 4. First Pass: Find global maximum vertical edge to enforce a constant nz
         vertical_edges = []
         for dim, tag in gmsh.model.getEntities(1):
             xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(dim, tag)
@@ -96,37 +114,51 @@ class GmshMesher:
             max_h = max([dz for _, dz in vertical_edges]) if vertical_edges else 0.1
             nz = max(1, int(round(max_h / self.target_size)))
             
-        # 2. Second Pass: Apply structured Transfinite meshing rules per surface!
-        # This is critical: Opposite edges of a 4-sided transfinite surface MUST have 
-        # the exact same number of nodes. Since the top and bottom wing skin boundaries 
-        # might have slightly different arc lengths, we must calculate the node count
-        # per surface and apply it to BOTH of its horizontal boundaries identically.
+        # 5. Second Pass: Apply structured Transfinite meshing rules per surface
         for dim, tag in surfaces:
-            bnd = gmsh.model.getBoundary([(dim, tag)], oriented=False)
+            bnd = gmsh.model.getBoundary([(dim, tag)], oriented=True)
             
+            # Identify vertical vs horizontal edges
             h_tags = []
             v_tags = []
             h_lengths = []
             
             for c_dim, c_tag in bnd:
-                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(c_dim, c_tag)
+                c_tag_abs = abs(c_tag)
+                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(c_dim, c_tag_abs)
                 if math.hypot(xmax - xmin, ymax - ymin) < 1e-4:
-                    v_tags.append(c_tag)
+                    v_tags.append(c_tag_abs)
                 else:
-                    h_tags.append(c_tag)
-                    h_lengths.append(gmsh.model.occ.getMass(c_dim, c_tag))
+                    h_tags.append(c_tag_abs)
+                    h_lengths.append(gmsh.model.occ.getMass(c_dim, c_tag_abs))
                     
-            # Set vertical edges
-            for v_tag in v_tags:
-                gmsh.model.mesh.setTransfiniteCurve(v_tag, nz + 1)
+            # Rule A: Fractal Webs (Exactly 2 vertical edges, 2 horizontal edges)
+            if len(v_tags) == 2:
+                for v_tag in v_tags:
+                    gmsh.model.mesh.setTransfiniteCurve(v_tag, nz + 1)
+                if h_tags:
+                    avg_len = sum(h_lengths) / len(h_lengths)
+                    nx = max(1, int(round(avg_len / self.target_size)))
+                    for h_tag in h_tags:
+                        gmsh.model.mesh.setTransfiniteCurve(h_tag, nx + 1)
+                        
+            # Rule B: Wing Skin (0 vertical edges, 4 boundary edges forming a loop)
+            elif len(v_tags) == 0 and len(bnd) == 4:
+                # bnd is ordered along the loop. 0 and 2 are opposite, 1 and 3 are opposite.
+                edges = [abs(t) for _, t in bnd]
+                l0 = gmsh.model.occ.getMass(1, edges[0])
+                l1 = gmsh.model.occ.getMass(1, edges[1])
+                l2 = gmsh.model.occ.getMass(1, edges[2])
+                l3 = gmsh.model.occ.getMass(1, edges[3])
                 
-            # Set horizontal edges to be identical
-            if h_tags:
-                avg_len = sum(h_lengths) / len(h_lengths)
-                nx = max(1, int(round(avg_len / self.target_size)))
-                for h_tag in h_tags:
-                    gmsh.model.mesh.setTransfiniteCurve(h_tag, nx + 1)
-                    
+                nx02 = max(1, int(round(((l0 + l2) / 2.0) / self.target_size)))
+                nx13 = max(1, int(round(((l1 + l3) / 2.0) / self.target_size)))
+                
+                gmsh.model.mesh.setTransfiniteCurve(edges[0], nx02 + 1)
+                gmsh.model.mesh.setTransfiniteCurve(edges[2], nx02 + 1)
+                gmsh.model.mesh.setTransfiniteCurve(edges[1], nx13 + 1)
+                gmsh.model.mesh.setTransfiniteCurve(edges[3], nx13 + 1)
+                
             # Apply structured surface rules (Quad Recombination)
             gmsh.model.mesh.setTransfiniteSurface(tag)
             gmsh.model.mesh.setRecombine(dim, tag)
@@ -147,7 +179,6 @@ class GmshMesher:
         elem_types, elem_tags, _ = gmsh.model.mesh.getElements(2)
         
         n_nodes = len(node_tags)
-        # Quads are type 3 in Gmsh
         n_elems = 0
         for i, etype in enumerate(elem_types):
             if etype == 3: # Quad
@@ -155,11 +186,22 @@ class GmshMesher:
                 
         gmsh.finalize()
         
+        # Post-process: Fix CPS4 → S4 and CPS3 → S3 for CalculiX shell analysis
+        # Gmsh cannot natively export S4/S3 shell labels; it writes CPS4/CPS3 (plane stress).
+        # We need S4/S3 for 3D shell bending + membrane behavior.
+        with open(output_inp, 'r') as f:
+            content = f.read()
+        content = content.replace('type=CPS4', 'type=S4')
+        content = content.replace('type=CPS3', 'type=S3')
+        with open(output_inp, 'w') as f:
+            f.write(content)
+        
         return {
             "n_nodes": n_nodes,
             "n_elems": n_elems,
             "nz": nz,
             "target_size": self.target_size,
-            "inp_path": output_inp
+            "inp_path": output_inp,
+            "n_webs": len(webs_surfs),
+            "n_skin_faces": len(skin_surfs),
         }
-

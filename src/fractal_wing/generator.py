@@ -16,7 +16,7 @@ import numpy as np
 from typing import List
 
 from .aeroshape_adapter import AeroWingAdapter
-from .structures import Seg, SubParams, BranchDef, Station, TrunkSpec, segments_cross
+from .structures import Seg, TrunkSpec, segments_cross
 
 
 class TreeGenerator:

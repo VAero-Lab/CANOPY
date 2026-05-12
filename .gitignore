@@ -1,0 +1,7 @@
+# FEM outputs
+examples/output_fem/
+
+# Python cache
+__pycache__/
+*.pyc
+

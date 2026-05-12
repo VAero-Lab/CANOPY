@@ -31,8 +31,9 @@ from .helpers import (
     make_graded_stations,
 )
 from .aeroshape_adapter import AeroWingAdapter
-from .cad_export import build_brep_webs
+from .cad_export import build_brep_webs, export_hollow_skin
 from .meshing import GmshMesher
+from .fem_solver import build_ccx_deck
 
 __all__ = [
     'AeroWingAdapter',
@@ -49,7 +50,9 @@ __all__ = [
     'make_zoned_stations',
     'make_graded_stations',
     'build_brep_webs',
+    'export_hollow_skin',
     'GmshMesher',
+    'build_ccx_deck',
 ]
 
 __version__ = "0.1.0"

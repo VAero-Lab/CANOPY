@@ -8,8 +8,7 @@ construction so that common fractal patterns can be set up in one call.
 from __future__ import annotations
 
 import copy
-import numpy as np
-from typing import Dict, List, Optional, Sequence, Union
+from typing import List
 
 from .structures import SubParams, BranchDef, Station
 from .distributions import distribute_stations

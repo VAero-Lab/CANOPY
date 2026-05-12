@@ -94,7 +94,7 @@ def build_brep_webs(segs: List[Seg], aerowing, as_solid: bool = False, output_st
             webs.append(trimmed_web)
             properties[len(webs) - 1] = {"thickness": seg.thick, "level": seg.level, "id": i}
             
-    # Combine into single CAD compound
+    # Combine webs into single CAD compound
     assembly = Compound(webs)
     
     if output_step:
@@ -102,3 +102,23 @@ def build_brep_webs(segs: List[Seg], aerowing, as_solid: bool = False, output_st
         NurbsExporter.to_step(assembly, output_step)
         
     return assembly, properties
+
+def export_hollow_skin(aerowing, output_step: str):
+    """
+    Extracts the hollow aerodynamic skin (Upper and Lower surfaces)
+    from the AeroShape wing solid and exports it to a STEP file.
+    It ignores the solid root/tip caps.
+    """
+    from build123d import Compound
+    from aeroshape.nurbs.export import NurbsExporter
+    
+    wing_solid = aerowing.to_occ_shape()
+    
+    # We only want hollow curved skin. 
+    # Skin surfaces are typically bounded by 4 edges (Root, Tip, LE, TE).
+    # Caps (Root/Tip) are usually bounded by 1 or 2 edges depending on the airfoil parameterization.
+    skin_faces = [f for f in wing_solid.faces() if len(f.edges()) == 4]
+    
+    assembly = Compound(skin_faces)
+    NurbsExporter.to_step(assembly, output_step)
+    return assembly

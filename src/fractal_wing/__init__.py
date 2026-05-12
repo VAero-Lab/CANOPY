@@ -34,6 +34,7 @@ from .aeroshape_adapter import AeroWingAdapter
 from .cad_export import build_brep_webs, export_hollow_skin
 from .meshing import GmshMesher
 from .fem_solver import build_ccx_deck
+from .run_utils import run_ccx
 
 __all__ = [
     'AeroWingAdapter',
@@ -53,6 +54,7 @@ __all__ = [
     'export_hollow_skin',
     'GmshMesher',
     'build_ccx_deck',
+    'run_ccx',
 ]
 
 __version__ = "0.1.0"

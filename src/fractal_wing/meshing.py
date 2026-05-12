@@ -36,7 +36,7 @@ class GmshMesher:
         self.target_size = target_elem_size
 
     def mesh(self, webs_step: str, output_inp: str, skin_step: str = None,
-             web_properties: dict = None, nz: int = None):
+             web_properties: dict = None, nz: int = None, export_msh: bool = False):
         """
         Generate global structured quad mesh from STEP files and export to CalculiX .inp.
         
@@ -54,6 +54,9 @@ class GmshMesher:
         nz : int, optional
             Number of elements along the vertical (Z) axis. If None, it calculates
             this dynamically based on the tallest vertical edge in the model.
+        export_msh : bool
+            If True, also save the mesh in Gmsh ``.msh`` format for GUI
+            visualization.  Default is False.
             
         Returns
         -------
@@ -64,7 +67,10 @@ class GmshMesher:
             raise FileNotFoundError(f"Input STEP file not found: {webs_step}")
             
         gmsh.initialize()
-        gmsh.option.setNumber("General.Terminal", 0) # Suppress verbose output
+        gmsh.option.setNumber("General.Terminal", 0)  # Suppress verbose output
+        gmsh.option.setNumber("General.NumThreads", os.cpu_count() or 4)
+        gmsh.option.setNumber("Mesh.Algorithm", 6)    # Frontal-Delaunay (fast)
+        gmsh.option.setNumber("Mesh.ElementOrder", 1)  # First-order elements
         
         # We will track which surface belongs to which physical group
         webs_surfs = []
@@ -169,10 +175,11 @@ class GmshMesher:
         # Save as CalculiX .inp format
         gmsh.write(output_inp)
         
-        # Also save as Gmsh .msh format for easy visualization
-        output_msh = output_inp.replace('.inp', '.msh')
-        if output_msh != output_inp:
-            gmsh.write(output_msh)
+        # Also save as Gmsh .msh format for easy visualization (optional)
+        if export_msh:
+            output_msh = output_inp.replace('.inp', '.msh')
+            if output_msh != output_inp:
+                gmsh.write(output_msh)
         
         # Extract stats before closing
         node_tags, _, _ = gmsh.model.mesh.getNodes()

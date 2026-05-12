@@ -6,12 +6,11 @@ Demonstrates the complete FEM pipeline:
   2. Export B-Rep STEP geometry (webs + hollow wing skin)
   3. Generate unified structured Quad (S4) mesh with Gmsh
   4. Build CalculiX simulation deck (material, contacts, BCs, loads)
-  5. Run CalculiX solver
+  5. Run CalculiX solver (with automatic parallelism)
   6. Convert results for ParaView visualization
 """
 
 import os
-import subprocess
 import fractal_wing as fw
 import matplotlib.pyplot as plt
 from utils import get_base_wing
@@ -87,41 +86,9 @@ def main():
         skin_thickness=0.003,   # 3mm skin
     )
 
-    # ── 5. Run CalculiX solver ──
-    print('\nRunning CalculiX solver (ccx)...')
-    # ccx expects the basename without extension, and searches in cwd
-    job_basename = os.path.basename(sim_path).replace('.inp', '')
-    result = subprocess.run(
-        ['ccx', job_basename],
-        cwd=OUT,
-        capture_output=True,
-        text=True,
-    )
-    
-    if result.returncode == 0:
-        print('  -> CalculiX solver completed successfully!')
-    else:
-        print(f'  -> CalculiX solver failed (exit code {result.returncode})')
-        print(f'     stdout: {result.stdout[-500:] if result.stdout else "empty"}')
-        print(f'     stderr: {result.stderr[-500:] if result.stderr else "empty"}')
-
-    # ── 6. Convert results for ParaView ──
-    frd_path = sim_path.replace('.inp', '.frd')
-    if os.path.exists(frd_path):
-        print('\nConverting results for ParaView (ccx2paraview)...')
-        try:
-            from ccx2paraview import Converter
-            import logging
-            logging.basicConfig(level=logging.WARNING)
-            c = Converter(frd_path, ['vtu'])
-            c.run()
-            print(f'  -> VTU files generated in: {OUT}')
-        except ImportError:
-            print('  -> ccx2paraview not installed. Run: pip install ccx2paraview')
-        except Exception as e:
-            print(f'  -> ccx2paraview conversion error: {e}')
-    else:
-        print(f'\nNo .frd results file found at: {frd_path}')
+    # ── 5. Run CalculiX solver & 6. Convert results ──
+    print('\nRunning CalculiX solver...')
+    result = fw.run_ccx(sim_path, convert_vtu=True)
     
     # ── Visualize the 1D graph for reference ──
     viz_fw = fw.Viz(wing)

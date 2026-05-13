@@ -1,5 +1,6 @@
 # FEM outputs
 examples/output_fem/
+tests/
 
 # Python cache
 __pycache__/

@@ -34,7 +34,9 @@ def run_ccx(
         Path to the CalculiX simulation ``.inp`` file.
     n_threads : int, optional
         Number of threads for parallel assembly and results calculation.
-        Defaults to ``os.cpu_count()``.
+        Defaults to ``min(os.cpu_count(), 8)`` to prevent OOM errors and
+        contact-search race conditions on high-core-count clusters using
+        the default SPOOLES solver.
     convert_vtu : bool
         If True, convert the ``.frd`` results file to ``.vtu`` format
         via ``ccx2paraview`` after a successful solve.  Default is False.
@@ -59,7 +61,9 @@ def run_ccx(
 
     # ── Thread count ──
     if n_threads is None:
-        n_threads = os.cpu_count() or 4
+        # Cap at 8 to prevent OOM / segfaults on high-core-count clusters 
+        # (e.g. 72 threads) when using standard SPOOLES ccx.
+        n_threads = min(os.cpu_count() or 4, 8)
 
     # ── Build environment with parallelism hints ──
     env = os.environ.copy()

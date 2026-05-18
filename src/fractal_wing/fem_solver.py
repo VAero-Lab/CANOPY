@@ -252,55 +252,8 @@ def build_ccx_deck(
         for p in active_loads:
             applied_loads.append((fallback_node, p['load']))
     
-    # ── Detect web-to-web TIE pairs ──
-    # We use the fractal segment hierarchy to find connected webs
+    # ── Detect Web Elsets ──
     web_elset_names = sorted([k for k in elsets if k.startswith('Web_')])
-    web_node_sets = {}
-    for wname in web_elset_names:
-        web_node_sets[wname] = _get_element_nodes_for_elset(wname, elements, elsets)
-    
-    tie_pairs = []
-    if segments is not None:
-        seg_to_web = {}
-        for web_idx, props in web_properties.items():
-            seg_id = props.get('id', web_idx)
-            seg_to_web[seg_id] = f'Web_{web_idx}'
-            
-        for i, sa in enumerate(segments):
-            for j, sb in enumerate(segments):
-                if i != j:
-                    # Parent-child connection: parent's end == child's start
-                    if np.linalg.norm(sa.p1 - sb.p0) < 1e-6:
-                        name_a = seg_to_web.get(i)
-                        name_b = seg_to_web.get(j)
-                        if name_a and name_b and name_a in web_elset_names and name_b in web_elset_names:
-                            # parent is master (name_a), child is slave (name_b)
-                            tie_pairs.append((name_a, name_b))
-
-    # ── Detect skin-adjacent nodes for each web ──
-    skin_nodes = _get_element_nodes_for_elset('WingSkin', elements, elsets)
-    skin_coords = np.array([nodes[n] for n in skin_nodes if n in nodes])
-    
-    web_skin_nsets = {}
-    if len(skin_coords) > 0:
-        from scipy.spatial import cKDTree
-        skin_tree = cKDTree(skin_coords)
-        
-        for wname in web_elset_names:
-            w_nodes = list(web_node_sets[wname])
-            if not w_nodes: continue
-            
-            # Remove root nodes to avoid MPC/SPC conflict on slave nodes
-            w_nodes = [n for n in w_nodes if n not in root_nodes]
-            if not w_nodes: continue
-            
-            w_coords = np.array([nodes[n] for n in w_nodes])
-            dists, _ = skin_tree.query(w_coords, k=1)
-            
-            # Nodes within 5cm of skin are "skin edge" nodes
-            edge_nodes = [w_nodes[idx] for idx, d in enumerate(dists) if d < 0.05]
-            if edge_nodes:
-                web_skin_nsets[wname] = edge_nodes
 
     # ── Compute per-web orientation vectors ──
     web_orientations = {}
@@ -347,13 +300,6 @@ def build_ccx_deck(
     lines.append('*NSET, NSET=NSET_TIP_LOAD')
     for n_id, _ in applied_loads:
         lines.append(f'{n_id},')
-    
-    # Web skin edge nodes
-    for wname, nset in web_skin_nsets.items():
-        lines.append(f'*NSET, NSET=NSET_{wname}_SkinEdge')
-        for k in range(0, len(nset), 10):
-            chunk = nset[k:k+10]
-            lines.append(', '.join(str(n) for n in chunk) + ',')
     
     # ── Material Definition ──
     lines.append('**')
@@ -410,43 +356,6 @@ def build_ccx_deck(
                      f'ORIENTATION=OR_Web_{web_idx}')
         lines.append(f'{thick}')
     
-    # ── Surface Definitions for TIE ──
-    lines.append('**')
-    lines.append('** ═══════════════════════════════════════════')
-    lines.append('** SURFACES AND TIE CONTACTS')
-    lines.append('** ═══════════════════════════════════════════')
-    lines.append('**')
-    
-    lines.append('*SURFACE, NAME=SURF_SKIN, TYPE=ELEMENT')
-    lines.append('WingSkin, SPOS')
-    
-    for wname in web_elset_names:
-        lines.append(f'*SURFACE, NAME=SURF_{wname}, TYPE=ELEMENT')
-        lines.append(f'{wname}, SPOS')
-        
-    for wname in web_skin_nsets.keys():
-        lines.append(f'*SURFACE, NAME=SURF_{wname}_SkinEdge, TYPE=NODE')
-        lines.append(f'NSET_{wname}_SkinEdge')
-    
-    # Skin-to-Webs TIE
-    lines.append('**')
-    lines.append('** Skin ↔ Webs glue contact')
-    for wname in web_skin_nsets.keys():
-        lines.append(f'*TIE, NAME=SkinBond_{wname}, POSITION TOLERANCE=0.05, ADJUST=YES')
-        lines.append(f'SURF_{wname}_SkinEdge, SURF_SKIN')
-    
-    # Web-to-Web TIEs
-    lines.append('**')
-    lines.append('** Web ↔ Web glue contact')
-    for pair_idx, (name_a, name_b) in enumerate(tie_pairs):
-        # We need to make sure we don't include clamped nodes in the slave surface.
-        # However, Web-to-Web TIE is surface-to-surface. 
-        # A simpler way is to just define it normally, since only Web_0 is clamped 
-        # and Web_0 is the master (name_a) in all its relationships. 
-        # So name_b (slave) does not contain clamped nodes.
-        lines.append(f'*TIE, NAME=WebBond_{pair_idx}, POSITION TOLERANCE=0.02, ADJUST=YES')
-        lines.append(f'SURF_{name_a}, SURF_{name_b}')
-    
     # ── Boundary Conditions ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
@@ -492,8 +401,6 @@ def build_ccx_deck(
     print(f'     Tip nodes: {len(tip_nodes)}')
     for n_id, load_val in applied_loads:
         print(f'     Tip load node: {n_id} ({load_val} N in Z)')
-    print(f'     Web-to-Web TIE pairs: {len(tie_pairs)}')
-    print(f'     Webs tied to skin: {len(web_skin_nsets)}')
     print(f'     Web orientations defined: {len(web_orientations)}')
     
     return output_path

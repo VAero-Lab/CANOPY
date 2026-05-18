@@ -85,7 +85,7 @@ def main():
     # ── 3. Generate unified structured FEM mesh ──
     print('\nExtracting Unified Structured FEM mesh (Gmsh)...')
     
-    mesher = fw.GmshMesher(target_elem_size=0.025)
+    mesher = fw.GmshMesher(target_elem_size=0.05)
     mesh_stats = mesher.mesh(
         webs_step_path, inp_path,
         skin_step=skin_step_path,

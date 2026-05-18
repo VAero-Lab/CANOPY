@@ -90,12 +90,12 @@ class GmshMesher:
         tags = gmsh.model.occ.importShapes(webs_step)
         webs_surfs = [t[1] for t in tags if t[0] == 2]
         
-        # ── Conformal Meshing: Boolean Fragments ──
-        # Intersect all surfaces so they share nodes perfectly at T-junctions
+        # ── Conformal Meshing: Boolean Fragments (Webs Only) ──
+        # Intersect only the webs against each other. The skin remains independent.
         webs_dimtags = [(2, t) for t in webs_surfs]
-        skin_dimtags = [(2, t) for t in skin_surfs]
         
-        out_dimtags, out_map = gmsh.model.occ.fragment(webs_dimtags, skin_dimtags)
+        # fragment webs against each other
+        out_dimtags, out_map = gmsh.model.occ.fragment(webs_dimtags, [])
         gmsh.model.occ.synchronize()
         
         # Map original faces to their new fragmented pieces
@@ -106,13 +106,8 @@ class GmshMesher:
             web_to_fragments.append(frags)
             new_webs_surfs.extend(frags)
             
-        new_skin_surfs = []
-        for i in range(len(webs_dimtags), len(webs_dimtags) + len(skin_dimtags)):
-            frags = [t[1] for t in out_map[i] if t[0] == 2]
-            new_skin_surfs.extend(frags)
-            
-        skin_surfs = new_skin_surfs
         webs_surfs = new_webs_surfs
+        # skin_surfs remains unchanged because we didn't fragment it
         
         # 3. Create Physical Groups for ELSETs in CalculiX
         # Aggregate groups for skin and all webs
@@ -136,8 +131,6 @@ class GmshMesher:
             return {"n_nodes": 0, "n_elems": 0}
             
         # 4. First Pass: Find global maximum vertical edge to enforce a constant nz
-        # (This is kept for reference, but transfinite logic is disabled because 
-        # conformal Boolean Fragments create complex N-sided polygons)
         vertical_edges = []
         for dim, tag in gmsh.model.getEntities(1):
             xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(dim, tag)
@@ -150,8 +143,57 @@ class GmshMesher:
             max_h = max([dz for _, dz in vertical_edges]) if vertical_edges else 0.1
             nz = max(1, int(round(max_h / self.target_size)))
             
-        # 5. Apply unstructured Quad Recombination per surface
+        # 5. Apply structured Transfinite meshing rules per surface
         for dim, tag in surfaces:
+            bnd = gmsh.model.getBoundary([(dim, tag)], oriented=True)
+            
+            # Identify vertical vs horizontal edges
+            h_tags = []
+            v_tags = []
+            h_lengths = []
+            
+            for c_dim, c_tag in bnd:
+                c_tag_abs = abs(c_tag)
+                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(c_dim, c_tag_abs)
+                if math.hypot(xmax - xmin, ymax - ymin) < 1e-4:
+                    v_tags.append(c_tag_abs)
+                else:
+                    h_tags.append(c_tag_abs)
+                    h_lengths.append(gmsh.model.occ.getMass(c_dim, c_tag_abs))
+                    
+            # Rule A: Web Fragments (Exactly 2 vertical edges)
+            # Because we only fragment webs against webs (vertical cuts), they remain 4-sided
+            if len(v_tags) == 2:
+                for v_tag in v_tags:
+                    gmsh.model.mesh.setTransfiniteCurve(v_tag, nz + 1)
+                if h_tags:
+                    avg_len = sum(h_lengths) / len(h_lengths)
+                    nx = max(1, int(round(avg_len / self.target_size)))
+                    for h_tag in h_tags:
+                        gmsh.model.mesh.setTransfiniteCurve(h_tag, nx + 1)
+                        
+            # Rule B: Wing Skin (0 vertical edges, 4 boundary edges forming a loop)
+            elif len(v_tags) == 0 and len(bnd) == 4:
+                # bnd is ordered along the loop. 0 and 2 are opposite, 1 and 3 are opposite.
+                edges = [abs(t) for _, t in bnd]
+                l0 = gmsh.model.occ.getMass(1, edges[0])
+                l1 = gmsh.model.occ.getMass(1, edges[1])
+                l2 = gmsh.model.occ.getMass(1, edges[2])
+                l3 = gmsh.model.occ.getMass(1, edges[3])
+                
+                nx02 = max(1, int(round(((l0 + l2) / 2.0) / self.target_size)))
+                nx13 = max(1, int(round(((l1 + l3) / 2.0) / self.target_size)))
+                
+                gmsh.model.mesh.setTransfiniteCurve(edges[0], nx02 + 1)
+                gmsh.model.mesh.setTransfiniteCurve(edges[2], nx02 + 1)
+                gmsh.model.mesh.setTransfiniteCurve(edges[1], nx13 + 1)
+                gmsh.model.mesh.setTransfiniteCurve(edges[3], nx13 + 1)
+                
+            try:
+                gmsh.model.mesh.setTransfiniteSurface(tag)
+            except Exception:
+                pass
+            
             gmsh.model.mesh.setRecombine(dim, tag)
             
         # Generate 2D surface mesh

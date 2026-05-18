@@ -252,8 +252,55 @@ def build_ccx_deck(
         for p in active_loads:
             applied_loads.append((fallback_node, p['load']))
     
-    # ── Detect Web Elsets ──
+    # ── Detect Web Elsets and Boundary Nodes ──
     web_elset_names = sorted([k for k in elsets if k.startswith('Web_')])
+    
+    # Flatten elements dict for quick lookup by ID
+    flat_elements = {}
+    for elem_list in elements.values():
+        for eid, enodes in elem_list:
+            flat_elements[eid] = enodes
+
+    # Topologically find all web edges
+    web_edges = {}
+    for wname in web_elset_names:
+        for eid in elsets.get(wname, []):
+            if eid in flat_elements:
+                enodes = flat_elements[eid]
+                n_n = len(enodes)
+                for i in range(n_n):
+                    edge = tuple(sorted((enodes[i], enodes[(i+1)%n_n])))
+                    web_edges[edge] = web_edges.get(edge, 0) + 1
+                    
+    # Nodes on edges shared by only 1 web element are on the outer boundary
+    boundary_nodes = set()
+    for edge, count in web_edges.items():
+        if count == 1:
+            boundary_nodes.add(edge[0])
+            boundary_nodes.add(edge[1])
+            
+    # Exclude root nodes to prevent SPC/MPC conflicts
+    boundary_nodes.difference_update(root_nodes)
+    
+    # ── Match Web Boundary Nodes to Skin ──
+    skin_nodes = _get_element_nodes_for_elset('WingSkin', elements, elsets)
+    skin_nodes_list = list(skin_nodes)
+    skin_coords = np.array([nodes[n] for n in skin_nodes_list if n in nodes])
+    
+    mpc_equations = []
+    if len(skin_coords) > 0 and boundary_nodes:
+        from scipy.spatial import cKDTree
+        skin_tree = cKDTree(skin_coords)
+        
+        w_nodes_list = list(boundary_nodes)
+        w_coords = np.array([nodes[n] for n in w_nodes_list if n in nodes])
+        
+        if len(w_coords) == len(w_nodes_list):
+            _, indices = skin_tree.query(w_coords, k=1)
+            for i in range(len(w_nodes_list)):
+                web_n = w_nodes_list[i]
+                skin_n = skin_nodes_list[indices[i]]
+                mpc_equations.append((web_n, skin_n))
 
     # ── Compute per-web orientation vectors ──
     web_orientations = {}
@@ -356,6 +403,19 @@ def build_ccx_deck(
                      f'ORIENTATION=OR_Web_{web_idx}')
         lines.append(f'{thick}')
     
+    # ── MPC Equations (Web to Skin Contact) ──
+    if mpc_equations:
+        lines.append('**')
+        lines.append('** ═══════════════════════════════════════════')
+        lines.append('** KINEMATIC COUPLING (MPC EQUATIONS)')
+        lines.append('** ═══════════════════════════════════════════')
+        lines.append('** Tying web boundary nodes to nearest skin nodes')
+        for web_n, skin_n in mpc_equations:
+            for dof in range(1, 7):
+                lines.append('*EQUATION')
+                lines.append('2')
+                lines.append(f'{web_n}, {dof}, 1.0, {skin_n}, {dof}, -1.0')
+    
     # ── Boundary Conditions ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
@@ -401,6 +461,7 @@ def build_ccx_deck(
     print(f'     Tip nodes: {len(tip_nodes)}')
     for n_id, load_val in applied_loads:
         print(f'     Tip load node: {n_id} ({load_val} N in Z)')
+    print(f'     Web-to-Skin MPCs: {len(mpc_equations)}')
     print(f'     Web orientations defined: {len(web_orientations)}')
     
     return output_path

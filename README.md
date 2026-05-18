@@ -11,8 +11,8 @@ A professional, modularized Python package for the generation of fractal tree-li
 - **Granular Branch Control**: Per-branch thickness control and tunable recursion termination thresholds.
 - **Multi-Trunk Support**: Generate complex designs with multiple independent trunks while maintaining global crossing constraints.
 - **AeroShape NURBS Integration**: Directly query $C^2$-continuous aerodynamic surfaces to restrict fractal growth perfectly within real CAD boundaries.
-- **Gmsh Structural Meshing**: Generates high-fidelity structured Quad (S4) shell meshes mapped precisely to the NURBS wing skin using OpenCASCADE B-Rep boundaries. Natively exports to CalculiX (`.inp`).
-- **CalculiX & ParaView Integration**: Fully automated FEM pipeline that builds simulation decks, defines fractal-hierarchy-aware `*TIE` contacts, applies boundary conditions, solves the structural response, and converts results to `.vtu` format for ParaView visualization.
+- **Fully Structured Hybrid Meshing**: Generates high-fidelity structured Quad (S4) shell meshes using Gmsh. Features independent, topologically locked wing skin meshing and perfectly conformal internal web fragment meshing.
+- **CalculiX & ParaView Integration**: Fully automated FEM pipeline that builds simulation decks, establishes rigorous mathematically-exact **Node-to-Node MPCs** (Multi-Point Constraints) for contact without brittle tolerances, applies boundary conditions, solves the structural response, and converts results to `.vtu` format for ParaView visualization.
 
 ## Installation
 
@@ -62,8 +62,9 @@ step_path = "fractal_mesh_shell.step"
 assembly, props = fw.build_brep_webs(segments, aero_wing, as_solid=False, output_step=step_path)
 
 # 6. Extract Structured FEM Mesh directly from STEP using Gmsh
-mesher = fw.GmshMesher(target_elem_size=0.025)
-stats = mesher.mesh(step_path, "fractal_mesh.inp")
+# You can define independent element sizes for the skin and webs to reduce total element count
+mesher = fw.GmshMesher(target_elem_size=0.025, skin_elem_size=0.05)
+stats = mesher.mesh(step_path, "fractal_mesh.inp", skin_step=skin_step_path, web_properties=props)
 
 # 7. Build Simulation Deck & Run CalculiX
 sim_path = fw.build_ccx_deck(

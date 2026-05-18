@@ -22,7 +22,6 @@ Helpers:
 
 from .structures import Seg, SubParams, BranchDef, Station, TrunkSpec
 from .generator import TreeGenerator, ConvWB
-from .distributions import distribute_stations
 from .visualization import Viz
 from .helpers import (
     make_mixed_stations,

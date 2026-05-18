@@ -3,13 +3,12 @@ CalculiX FEM Simulation Builder.
 
 Reads a Gmsh-generated mesh .inp file and appends the complete CalculiX
 simulation deck: material definitions, shell sections, orientations,
-TIE contacts, boundary conditions, loads, and analysis step.
+MPC equations, boundary conditions, loads, and analysis step.
 """
 
 from __future__ import annotations
 
 import io
-import os
 import re
 import numpy as np
 from typing import Dict, List, Tuple
@@ -129,17 +128,17 @@ def _parse_inp_elements(inp_path: str) -> Dict[str, List[Tuple[int, List[int]]]]
     return elements
 
 
-def _get_element_nodes_for_elset(elset_name: str, elements: dict, 
+def _get_element_nodes_for_elset(elset_name: str, elements: dict,
                                   elsets: dict) -> set:
     """Get all unique node IDs belonging to a named element set."""
     node_ids = set()
-    
+
     # Check if elements are directly in a surface/element block with this ELSET name
     for eset_name, elem_list in elements.items():
         if eset_name == elset_name:
             for eid, conn in elem_list:
                 node_ids.update(conn)
-    
+
     # Also check the ELSET definitions (which reference element IDs)
     if elset_name in elsets:
         target_eids = set(elsets[elset_name])
@@ -147,7 +146,7 @@ def _get_element_nodes_for_elset(elset_name: str, elements: dict,
             for eid, conn in elem_list:
                 if eid in target_eids:
                     node_ids.update(conn)
-    
+
     return node_ids
 
 
@@ -166,7 +165,7 @@ def build_ccx_deck(
 ) -> str:
     """
     Build a complete CalculiX simulation deck from a Gmsh mesh .inp file.
-    
+
     Parameters
     ----------
     mesh_inp : str
@@ -183,7 +182,7 @@ def build_ccx_deck(
     tip_load : float
         Fallback concentrated force if point_loads is not provided.
     point_loads : list of dict, optional
-        List of dictionaries defining point loads at the tip. 
+        List of dictionaries defining point loads at the tip.
         Format: [{'x_frac': 0.5, 'load': -1000.0}], where x_frac is the chordwise position (0=LE, 1=TE).
     material : dict, optional
         Material properties dict. Defaults to CFRP_T300.
@@ -201,7 +200,7 @@ def build_ccx_deck(
         ASCII output compatible with ``ccx2paraview`` and other
         post-processing tools.  Set to True only when VTU conversion
         is not needed.
-        
+
     Returns
     -------
     str
@@ -209,23 +208,23 @@ def build_ccx_deck(
     """
     if material is None:
         material = CFRP_T300
-        
+
     if output_path is None:
         output_path = mesh_inp.replace('.inp', '_sim.inp')
-    
+
     # ── Parse the mesh ──
     nodes = _parse_inp_nodes(mesh_inp)
     elements = _parse_inp_elements(mesh_inp)
     elsets = _parse_inp_elsets(mesh_inp)
-    
+
     # ── Identify coordinate-based node sets ──
     ys = [c[1] for c in nodes.values()]
     y_min, y_max = min(ys), max(ys)
     tol_y = 1e-3  # 1mm tolerance for coordinate matching
-    
+
     root_nodes = sorted([nid for nid, (x, y, z) in nodes.items() if abs(y - y_min) < tol_y])
     tip_nodes = sorted([nid for nid, (x, y, z) in nodes.items() if abs(y - y_max) < tol_y])
-    
+
     # Process point loads at the tip
     active_loads = []
     if point_loads is not None:
@@ -235,13 +234,13 @@ def build_ccx_deck(
             active_loads.append({'x_frac': frac, 'load': val})
     else:
         active_loads.append({'x_frac': 0.5, 'load': tip_load})
-        
+
     applied_loads = []
     if tip_nodes:
         tip_xs = [nodes[n][0] for n in tip_nodes]
         min_x, max_x = min(tip_xs), max(tip_xs)
         dx = max_x - min_x if max_x > min_x else 1.0
-        
+
         for p in active_loads:
             target_x = min_x + p['x_frac'] * dx
             node_id = min(tip_nodes, key=lambda n: abs(nodes[n][0] - target_x))
@@ -251,10 +250,10 @@ def build_ccx_deck(
         fallback_node = max(nodes.keys())
         for p in active_loads:
             applied_loads.append((fallback_node, p['load']))
-    
+
     # ── Detect Web Elsets and Boundary Nodes ──
     web_elset_names = sorted([k for k in elsets if k.startswith('Web_')])
-    
+
     # Flatten elements dict for quick lookup by ID
     flat_elements = {}
     for elem_list in elements.values():
@@ -271,30 +270,30 @@ def build_ccx_deck(
                 for i in range(n_n):
                     edge = tuple(sorted((enodes[i], enodes[(i+1)%n_n])))
                     web_edges[edge] = web_edges.get(edge, 0) + 1
-                    
+
     # Nodes on edges shared by only 1 web element are on the outer boundary
     boundary_nodes = set()
     for edge, count in web_edges.items():
         if count == 1:
             boundary_nodes.add(edge[0])
             boundary_nodes.add(edge[1])
-            
+
     # Exclude root nodes to prevent SPC/MPC conflicts
     boundary_nodes.difference_update(root_nodes)
-    
+
     # ── Match Web Boundary Nodes to Skin ──
     skin_nodes = _get_element_nodes_for_elset('WingSkin', elements, elsets)
     skin_nodes_list = list(skin_nodes)
     skin_coords = np.array([nodes[n] for n in skin_nodes_list if n in nodes])
-    
+
     mpc_equations = []
     if len(skin_coords) > 0 and boundary_nodes:
         from scipy.spatial import cKDTree
         skin_tree = cKDTree(skin_coords)
-        
+
         w_nodes_list = list(boundary_nodes)
         w_coords = np.array([nodes[n] for n in w_nodes_list if n in nodes])
-        
+
         if len(w_coords) == len(w_nodes_list):
             _, indices = skin_tree.query(w_coords, k=1)
             for i in range(len(w_nodes_list)):
@@ -314,40 +313,40 @@ def build_ccx_deck(
                 if length > 1e-12:
                     direction = direction / length
                     web_orientations[web_idx] = (float(direction[0]), float(direction[1]), 0.0)
-    
+
     # ── Build the simulation deck ──
     lines = []
-    
+
     # Read the original mesh content
     with open(mesh_inp, 'r') as f:
         mesh_content = f.read()
     lines.append(mesh_content.rstrip())
     lines.append('')
-    
+
     # ── Node Sets ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('** NODE SETS')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('**')
-    
+
     # Root nodes
     lines.append('*NSET, NSET=NSET_ROOT')
     for k in range(0, len(root_nodes), 10):
         chunk = root_nodes[k:k+10]
         lines.append(', '.join(str(n) for n in chunk) + ',')
-    
+
     # Tip nodes
     lines.append('*NSET, NSET=NSET_TIP')
     for k in range(0, len(tip_nodes), 10):
         chunk = tip_nodes[k:k+10]
         lines.append(', '.join(str(n) for n in chunk) + ',')
-    
+
     # Tip load nodes
     lines.append('*NSET, NSET=NSET_TIP_LOAD')
     for n_id, _ in applied_loads:
         lines.append(f'{n_id},')
-    
+
     # ── Material Definition ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
@@ -362,17 +361,17 @@ def build_ccx_deck(
     lines.append(f'{material["G23"]}')
     lines.append('*DENSITY')
     lines.append(f'{material["density"]}')
-    
+
     # ── Orientations ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('** ORIENTATIONS')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('**')
-    
+
     lines.append('*ORIENTATION, NAME=OR_SKIN, SYSTEM=RECTANGULAR')
     lines.append('0., 1., 0.,  0., 0., 1.')
-    
+
     for web_idx in range(len(web_elset_names)):
         if web_idx in web_orientations:
             dx, dy, dz = web_orientations[web_idx]
@@ -380,18 +379,18 @@ def build_ccx_deck(
             dx, dy, dz = 0., 1., 0.
         lines.append(f'*ORIENTATION, NAME=OR_Web_{web_idx}, SYSTEM=RECTANGULAR')
         lines.append(f'{dx}, {dy}, {dz},  0., 0., 1.')
-    
+
     # ── Shell Sections ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('** SHELL SECTIONS')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('**')
-    
+
     lines.append(f'*SHELL SECTION, ELSET=WingSkin, MATERIAL={material["name"]}, '
                  f'ORIENTATION=OR_SKIN')
     lines.append(f'{skin_thickness}')
-    
+
     for web_idx in range(len(web_elset_names)):
         if web_thickness_override is not None:
             thick = web_thickness_override
@@ -402,7 +401,7 @@ def build_ccx_deck(
         lines.append(f'*SHELL SECTION, ELSET=Web_{web_idx}, MATERIAL={material["name"]}, '
                      f'ORIENTATION=OR_Web_{web_idx}')
         lines.append(f'{thick}')
-    
+
     # ── MPC Equations (Web to Skin Contact) ──
     if mpc_equations:
         lines.append('**')
@@ -415,14 +414,14 @@ def build_ccx_deck(
                 lines.append('*EQUATION')
                 lines.append('2')
                 lines.append(f'{web_n}, {dof}, 1.0, {skin_n}, {dof}, -1.0')
-    
+
     # ── Boundary Conditions ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('** BOUNDARY CONDITIONS AND LOADS')
     lines.append('** ═══════════════════════════════════════════')
     lines.append('**')
-    
+
     lines.append('*STEP')
     if solver:
         lines.append(f'*STATIC, SOLVER={solver.upper()}')
@@ -430,16 +429,16 @@ def build_ccx_deck(
         lines.append('*STATIC')
     lines.append('1., 1.')
     lines.append('**')
-    
+
     lines.append('*BOUNDARY')
     lines.append('NSET_ROOT, 1, 6')
     lines.append('**')
-    
+
     for n_id, load_val in applied_loads:
         lines.append('*CLOAD')
         lines.append(f'{n_id}, 3, {load_val}')
         lines.append('**')
-    
+
     if binary_output:
         lines.append('*NODE OUTPUT')
         lines.append('U')
@@ -452,10 +451,10 @@ def build_ccx_deck(
         lines.append('S')
     lines.append('**')
     lines.append('*END STEP')
-    
+
     with open(output_path, 'w') as f:
         f.write('\n'.join(lines) + '\n')
-    
+
     print(f'  -> CalculiX simulation deck written: {output_path}')
     print(f'     Root nodes (clamped): {len(root_nodes)}')
     print(f'     Tip nodes: {len(tip_nodes)}')
@@ -463,5 +462,5 @@ def build_ccx_deck(
         print(f'     Tip load node: {n_id} ({load_val} N in Z)')
     print(f'     Web-to-Skin MPCs: {len(mpc_equations)}')
     print(f'     Web orientations defined: {len(web_orientations)}')
-    
+
     return output_path

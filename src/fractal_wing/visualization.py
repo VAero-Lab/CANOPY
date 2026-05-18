@@ -77,11 +77,11 @@ class Viz:
         x_range = (mx + r * 0.8) - (mx - r * 0.5)
         y_range = (self.w.b + 0.5) - (-0.5)
         z_range = (r * 0.15) - (-r * 0.15)
-        
+
         ax.set_xlim(mx - r * 0.5, mx + r * 0.8)
         ax.set_ylim(-0.5, self.w.b + 0.5)
         ax.set_zlim(-r * 0.15, r * 0.15)
-        
+
         # Set proportional box aspect ratio (x, y, z)
         ax.set_box_aspect((x_range, y_range, z_range))
         plt.tight_layout()
@@ -163,7 +163,7 @@ class Viz:
             c = plt.cm.YlOrRd(0.2 + 0.7 * t)
             zu0, zl0 = self.w.z_at(s.p0[0], s.p0[1])
             zu1, zl1 = self.w.z_at(s.p1[0], s.p1[1])
-            
+
             vtx = [
                 (s.p0[0], s.p0[1], zl0),
                 (s.p1[0], s.p1[1], zl1),
@@ -172,7 +172,7 @@ class Viz:
             ]
             polys.append(vtx)
             colors.append(c)
-            
+
         collection = Poly3DCollection(polys, facecolors=colors, edgecolors='none', alpha=0.8)
         ax.add_collection3d(collection)
 

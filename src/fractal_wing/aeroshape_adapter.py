@@ -12,7 +12,7 @@ class AeroWingAdapter:
     Adapter that wraps an AeroShape MultiSegmentWing to provide the
     analytical 2D boundaries (leading edge, trailing edge, spars)
     needed by the fractal-wing TreeGenerator.
-    
+
     Parameters
     ----------
     aerowing : aeroshape.geometry.wings.MultiSegmentWing
@@ -30,12 +30,12 @@ class AeroWingAdapter:
         self.sf = sf
         self.sr = sr
         self.bm = bm
-        
+
         # Extract pre-computed sections from AeroShape
         self.frames = self.w.get_section_frames()
         if not self.frames:
             raise ValueError("AeroShape wing must have defined segments/frames.")
-            
+
         self.y_root = self.frames[0]['y']
         self.y_tip = self.frames[-1]['y']
         self.b = self.y_tip - self.y_root
@@ -46,7 +46,7 @@ class AeroWingAdapter:
             return self.frames[0][key]
         if y >= self.y_tip:
             return self.frames[-1][key]
-            
+
         for i in range(len(self.frames) - 1):
             f0 = self.frames[i]
             f1 = self.frames[i + 1]
@@ -57,14 +57,14 @@ class AeroWingAdapter:
                 t = (y - f0['y']) / dy
                 return f0[key] * (1 - t) + f1[key] * t
         return self.frames[-1][key]
-        
+
     def _interp_airfoil(self, y: float):
         """Interpolate the AirfoilProfile object along the span."""
         if y <= self.y_root:
             return self.frames[0]['airfoil']
         if y >= self.y_tip:
             return self.frames[-1]['airfoil']
-            
+
         for i in range(len(self.frames) - 1):
             f0 = self.frames[i]
             f1 = self.frames[i + 1]
@@ -142,36 +142,36 @@ class AeroWingAdapter:
         e = y / self.b if self.b > 0 else 0
         if e < 0 or e > 1:
             return 0.0, 0.0
-            
+
         ch = self.c(e)
         xl = self.xle(e)
         z_off = self._interp(y, 'z_offset')
-        
+
         # Local chord fraction
         xi = np.clip((x - xl) / ch, 0.001, 0.999) if ch > 1e-6 else 0.5
-        
+
         af = self._interp_airfoil(y)
         # AeroShape AirfoilProfile contains x, z coordinates.
         if hasattr(af, 'x') and hasattr(af, 'z'):
             af_x = np.array(af.x)
             af_z = np.array(af.z)
-            
+
             # Find leading edge index
             le_idx = np.argmin(af_x)
-            
+
             # Upper surface is from LE to TE (x increases from 0 to 1)
             x_up = af_x[le_idx:]
             z_up_curve = af_z[le_idx:]
-            
+
             # Lower surface is from TE to LE (x decreases from 1 to 0)
             # Reverse it so x is monotonically increasing for np.interp
             x_low = af_x[:le_idx+1][::-1]
             z_low_curve = af_z[:le_idx+1][::-1]
-            
+
             z_max = np.interp(xi, x_up, z_up_curve)
             z_min = np.interp(xi, x_low, z_low_curve)
-            
+
             return z_max * ch + z_off, z_min * ch + z_off
-            
+
         # Fallback fallback
         return 0.05 * ch + z_off, -0.05 * ch + z_off

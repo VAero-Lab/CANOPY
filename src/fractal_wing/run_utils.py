@@ -10,7 +10,6 @@ from __future__ import annotations
 import os
 import subprocess
 import time
-from typing import Optional
 
 
 def run_ccx(
@@ -61,7 +60,7 @@ def run_ccx(
 
     # ── Thread count ──
     if n_threads is None:
-        # Cap at 8 to prevent OOM / segfaults on high-core-count clusters 
+        # Cap at 8 to prevent OOM / segfaults on high-core-count clusters
         # (e.g. 72 threads) when using standard SPOOLES ccx.
         n_threads = min(os.cpu_count() or 4, 8)
 

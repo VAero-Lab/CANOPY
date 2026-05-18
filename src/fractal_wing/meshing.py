@@ -29,11 +29,12 @@ class GmshMesher:
         The desired length of each element edge (in meters).
     """
 
-    def __init__(self, target_elem_size: float = 0.05):
+    def __init__(self, target_elem_size: float = 0.05, skin_elem_size: float = None):
         if not GMSH_AVAILABLE:
             raise ImportError("Gmsh is not installed. Please run `pip install gmsh` to use the GmshMesher.")
             
         self.target_size = target_elem_size
+        self.skin_size = skin_elem_size if skin_elem_size is not None else target_elem_size
 
     def mesh(self, webs_step: str, output_inp: str, skin_step: str = None,
              web_properties: dict = None, nz: int = None, export_msh: bool = False):
@@ -74,8 +75,10 @@ class GmshMesher:
         gmsh.option.setNumber("Mesh.ElementOrder", 1)  # First-order elements
         
         # Enforce global mesh size (replaces transfinite curves for fragmented topology)
-        gmsh.option.setNumber("Mesh.MeshSizeMin", self.target_size * 0.8)
-        gmsh.option.setNumber("Mesh.MeshSizeMax", self.target_size * 1.2)
+        min_size = min(self.target_size, self.skin_size)
+        max_size = max(self.target_size, self.skin_size)
+        gmsh.option.setNumber("Mesh.MeshSizeMin", min_size * 0.8)
+        gmsh.option.setNumber("Mesh.MeshSizeMax", max_size * 1.2)
         
         # We will track which surface belongs to which physical group
         webs_surfs = []
@@ -181,8 +184,8 @@ class GmshMesher:
                 l2 = gmsh.model.occ.getMass(1, edges[2])
                 l3 = gmsh.model.occ.getMass(1, edges[3])
                 
-                nx02 = max(1, int(round(((l0 + l2) / 2.0) / self.target_size)))
-                nx13 = max(1, int(round(((l1 + l3) / 2.0) / self.target_size)))
+                nx02 = max(1, int(round(((l0 + l2) / 2.0) / self.skin_size)))
+                nx13 = max(1, int(round(((l1 + l3) / 2.0) / self.skin_size)))
                 
                 gmsh.model.mesh.setTransfiniteCurve(edges[0], nx02 + 1)
                 gmsh.model.mesh.setTransfiniteCurve(edges[2], nx02 + 1)

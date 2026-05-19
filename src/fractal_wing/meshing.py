@@ -29,12 +29,13 @@ class GmshMesher:
         The desired length of each element edge (in meters).
     """
 
-    def __init__(self, target_elem_size: float = 0.05, skin_elem_size: float = None):
+    def __init__(self, target_elem_size: float = 0.05, skin_elem_size: float = None, skin_clustering: float = 1.0):
         if not GMSH_AVAILABLE:
             raise ImportError("Gmsh is not installed. Please run `pip install gmsh` to use the GmshMesher.")
-
+            
         self.target_size = target_elem_size
         self.skin_size = skin_elem_size if skin_elem_size is not None else target_elem_size
+        self.skin_clustering = skin_clustering
 
     def mesh(self, webs_step: str, output_inp: str, skin_step: str = None,
              web_properties: dict = None, nz: int = None, export_msh: bool = False):
@@ -186,11 +187,26 @@ class GmshMesher:
 
                 nx02 = max(1, int(round(((l0 + l2) / 2.0) / self.skin_size)))
                 nx13 = max(1, int(round(((l1 + l3) / 2.0) / self.skin_size)))
-
-                gmsh.model.mesh.setTransfiniteCurve(edges[0], nx02 + 1)
-                gmsh.model.mesh.setTransfiniteCurve(edges[2], nx02 + 1)
-                gmsh.model.mesh.setTransfiniteCurve(edges[1], nx13 + 1)
-                gmsh.model.mesh.setTransfiniteCurve(edges[3], nx13 + 1)
+                
+                # Identify which pair is chordwise (the ones with smaller bounding box Y-span)
+                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(1, edges[0])
+                dy0 = ymax - ymin
+                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(1, edges[1])
+                dy1 = ymax - ymin
+                
+                is_02_chordwise = dy0 < dy1
+                
+                if is_02_chordwise:
+                    ctype_02, coef_02 = ("Bump", self.skin_clustering) if self.skin_clustering != 1.0 else ("Progression", 1.0)
+                    ctype_13, coef_13 = "Progression", 1.0
+                else:
+                    ctype_02, coef_02 = "Progression", 1.0
+                    ctype_13, coef_13 = ("Bump", self.skin_clustering) if self.skin_clustering != 1.0 else ("Progression", 1.0)
+                
+                gmsh.model.mesh.setTransfiniteCurve(edges[0], nx02 + 1, ctype_02, coef_02)
+                gmsh.model.mesh.setTransfiniteCurve(edges[2], nx02 + 1, ctype_02, coef_02)
+                gmsh.model.mesh.setTransfiniteCurve(edges[1], nx13 + 1, ctype_13, coef_13)
+                gmsh.model.mesh.setTransfiniteCurve(edges[3], nx13 + 1, ctype_13, coef_13)
 
             try:
                 gmsh.model.mesh.setTransfiniteSurface(tag)

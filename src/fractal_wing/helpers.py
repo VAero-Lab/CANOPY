@@ -336,3 +336,72 @@ def make_graded_stations(
         ))
 
     return stations
+
+def ensure_open_te(af, cut_fraction: float = 0.01):
+    """
+    Ensures that an AeroShape AirfoilProfile has an open (blunt) trailing edge.
+    
+    If the airfoil converges to a single point at the trailing edge, this removes
+    the trailing edge points and rescales the remaining coordinates so that
+    the chord length remains exactly 1.0. This prevents meshing singularities
+    where internal webs would degenerate into 3-sided triangles.
+    
+    Parameters
+    ----------
+    af : aeroshape.geometry.airfoils.AirfoilProfile
+        The input airfoil profile.
+    cut_fraction : float
+        The fraction of the chord to slice off the trailing edge if it is closed.
+        Default is 0.01 (1%).
+        
+    Returns
+    -------
+    aeroshape.geometry.airfoils.AirfoilProfile
+        A new airfoil profile guaranteed to have an open trailing edge.
+    """
+    import numpy as np
+    from aeroshape.geometry.airfoils import AirfoilProfile
+
+    x = np.array(af.x)
+    z = np.array(af.z)
+    
+    x_max = np.max(x)
+    te_points = np.where(x > 0.999 * x_max)[0]
+    z_te = z[te_points]
+    
+    if np.max(z_te) - np.min(z_te) < 1e-3 * x_max:
+        le_idx = np.argmin(x)
+        cut_x = x_max * (1.0 - cut_fraction)
+        
+        x_lower = x[:le_idx+1]
+        z_lower = z[:le_idx+1]
+        
+        x_upper = x[le_idx:]
+        z_upper = z[le_idx:]
+        
+        # Interpolate at exactly cut_x
+        z_lower_cut = np.interp(cut_x, x_lower[::-1], z_lower[::-1])
+        z_upper_cut = np.interp(cut_x, x_upper, z_upper)
+        
+        keep_lower = x_lower <= cut_x
+        keep_upper = x_upper <= cut_x
+        
+        new_x_lower = x_lower[keep_lower]
+        new_z_lower = z_lower[keep_lower]
+        new_x_lower = np.insert(new_x_lower, 0, cut_x)
+        new_z_lower = np.insert(new_z_lower, 0, z_lower_cut)
+        
+        new_x_upper = x_upper[keep_upper]
+        new_z_upper = z_upper[keep_upper]
+        new_x_upper = np.append(new_x_upper, cut_x)
+        new_z_upper = np.append(new_z_upper, z_upper_cut)
+        
+        new_x = np.concatenate([new_x_lower[:-1], new_x_upper])
+        new_z = np.concatenate([new_z_lower[:-1], new_z_upper])
+        
+        new_x = new_x / cut_x
+        new_z = new_z / cut_x
+        
+        return AirfoilProfile.from_points(new_x, new_z, name=f"{af.name}_open")
+        
+    return af

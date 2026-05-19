@@ -62,7 +62,14 @@ def _parse_inp_nodes(inp_path: str) -> Dict[int, Tuple[float, float, float]]:
 
     # 2. Bulk-parse with numpy for speed
     block = '\n'.join(node_lines)
-    data = np.genfromtxt(io.StringIO(block), delimiter=',', usecols=(0, 1, 2, 3))
+    data = np.genfromtxt(
+        io.StringIO(block),
+        delimiter=',',
+        usecols=(
+            0,
+            1,
+            2,
+            3))
 
     # Handle single-node edge case (genfromtxt returns 1-D array)
     if data.ndim == 1:
@@ -99,7 +106,8 @@ def _parse_inp_elsets(inp_path: str) -> Dict[str, List[int]]:
     return elsets
 
 
-def _parse_inp_elements(inp_path: str) -> Dict[str, List[Tuple[int, List[int]]]]:
+def _parse_inp_elements(
+        inp_path: str) -> Dict[str, List[Tuple[int, List[int]]]]:
     """Parse *ELEMENT blocks. Returns {elset_name: [(elem_id, [n1,n2,n3,n4]), ...]}."""
     elements = {}
     current_set = None
@@ -129,11 +137,12 @@ def _parse_inp_elements(inp_path: str) -> Dict[str, List[Tuple[int, List[int]]]]
 
 
 def _get_element_nodes_for_elset(elset_name: str, elements: dict,
-                                  elsets: dict) -> set:
+                                 elsets: dict) -> set:
     """Get all unique node IDs belonging to a named element set."""
     node_ids = set()
 
-    # Check if elements are directly in a surface/element block with this ELSET name
+    # Check if elements are directly in a surface/element block with this
+    # ELSET name
     for eset_name, elem_list in elements.items():
         if eset_name == elset_name:
             for eid, conn in elem_list:
@@ -222,8 +231,10 @@ def build_ccx_deck(
     y_min, y_max = min(ys), max(ys)
     tol_y = 1e-3  # 1mm tolerance for coordinate matching
 
-    root_nodes = sorted([nid for nid, (x, y, z) in nodes.items() if abs(y - y_min) < tol_y])
-    tip_nodes = sorted([nid for nid, (x, y, z) in nodes.items() if abs(y - y_max) < tol_y])
+    root_nodes = sorted(
+        [nid for nid, (x, y, z) in nodes.items() if abs(y - y_min) < tol_y])
+    tip_nodes = sorted(
+        [nid for nid, (x, y, z) in nodes.items() if abs(y - y_max) < tol_y])
 
     # Process point loads at the tip
     active_loads = []
@@ -268,7 +279,7 @@ def build_ccx_deck(
                 enodes = flat_elements[eid]
                 n_n = len(enodes)
                 for i in range(n_n):
-                    edge = tuple(sorted((enodes[i], enodes[(i+1)%n_n])))
+                    edge = tuple(sorted((enodes[i], enodes[(i + 1) % n_n])))
                     web_edges[edge] = web_edges.get(edge, 0) + 1
 
     # Nodes on edges shared by only 1 web element are on the outer boundary
@@ -312,7 +323,10 @@ def build_ccx_deck(
                 length = np.linalg.norm(direction)
                 if length > 1e-12:
                     direction = direction / length
-                    web_orientations[web_idx] = (float(direction[0]), float(direction[1]), 0.0)
+                    web_orientations[web_idx] = (
+                        float(
+                            direction[0]), float(
+                            direction[1]), 0.0)
 
     # ── Build the simulation deck ──
     lines = []
@@ -333,13 +347,13 @@ def build_ccx_deck(
     # Root nodes
     lines.append('*NSET, NSET=NSET_ROOT')
     for k in range(0, len(root_nodes), 10):
-        chunk = root_nodes[k:k+10]
+        chunk = root_nodes[k:k + 10]
         lines.append(', '.join(str(n) for n in chunk) + ',')
 
     # Tip nodes
     lines.append('*NSET, NSET=NSET_TIP')
     for k in range(0, len(tip_nodes), 10):
-        chunk = tip_nodes[k:k+10]
+        chunk = tip_nodes[k:k + 10]
         lines.append(', '.join(str(n) for n in chunk) + ',')
 
     # Tip load nodes
@@ -377,7 +391,8 @@ def build_ccx_deck(
             dx, dy, dz = web_orientations[web_idx]
         else:
             dx, dy, dz = 0., 1., 0.
-        lines.append(f'*ORIENTATION, NAME=OR_Web_{web_idx}, SYSTEM=RECTANGULAR')
+        lines.append(
+            f'*ORIENTATION, NAME=OR_Web_{web_idx}, SYSTEM=RECTANGULAR')
         lines.append(f'{dx}, {dy}, {dz},  0., 0., 1.')
 
     # ── Shell Sections ──

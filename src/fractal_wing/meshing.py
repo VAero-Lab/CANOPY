@@ -29,10 +29,12 @@ class GmshMesher:
         The desired length of each element edge (in meters).
     """
 
-    def __init__(self, target_elem_size: float = 0.05, skin_elem_size: float = None, skin_clustering: float = 1.0):
+    def __init__(self, target_elem_size: float = 0.05,
+                 skin_elem_size: float = None, skin_clustering: float = 1.0):
         if not GMSH_AVAILABLE:
-            raise ImportError("Gmsh is not installed. Please run `pip install gmsh` to use the GmshMesher.")
-            
+            raise ImportError(
+                "Gmsh is not installed. Please run `pip install gmsh` to use the GmshMesher.")
+
         self.target_size = target_elem_size
         self.skin_size = skin_elem_size if skin_elem_size is not None else target_elem_size
         self.skin_clustering = skin_clustering
@@ -71,11 +73,14 @@ class GmshMesher:
         gmsh.initialize()
         gmsh.option.setNumber("General.Terminal", 0)  # Suppress verbose output
         gmsh.option.setNumber("General.NumThreads", os.cpu_count() or 4)
-        gmsh.option.setNumber("Mesh.Algorithm", 8)    # Frontal-Delaunay for Quads (robust for fragments)
-        gmsh.option.setNumber("Mesh.RecombineAll", 1) # Force quad recombination globally
+        # Frontal-Delaunay for Quads (robust for fragments)
+        gmsh.option.setNumber("Mesh.Algorithm", 8)
+        # Force quad recombination globally
+        gmsh.option.setNumber("Mesh.RecombineAll", 1)
         gmsh.option.setNumber("Mesh.ElementOrder", 1)  # First-order elements
 
-        # Enforce global mesh size (replaces transfinite curves for fragmented topology)
+        # Enforce global mesh size (replaces transfinite curves for fragmented
+        # topology)
         min_size = min(self.target_size, self.skin_size)
         max_size = max(self.target_size, self.skin_size)
         gmsh.option.setNumber("Mesh.MeshSizeMin", min_size * 0.8)
@@ -95,7 +100,8 @@ class GmshMesher:
         webs_surfs = [t[1] for t in tags if t[0] == 2]
 
         # ── Conformal Meshing: Boolean Fragments (Webs Only) ──
-        # Intersect only the webs against each other. The skin remains independent.
+        # Intersect only the webs against each other. The skin remains
+        # independent.
         webs_dimtags = [(2, t) for t in webs_surfs]
 
         # fragment webs against each other
@@ -123,7 +129,8 @@ class GmshMesher:
             pg_webs = gmsh.model.addPhysicalGroup(2, webs_surfs)
             gmsh.model.setPhysicalName(2, pg_webs, "FractalWebs")
 
-        # Per-web Physical Groups (Web_0, Web_1, ...) for individual shell sections
+        # Per-web Physical Groups (Web_0, Web_1, ...) for individual shell
+        # sections
         for idx, frag_list in enumerate(web_to_fragments):
             if frag_list:
                 pg = gmsh.model.addPhysicalGroup(2, frag_list)
@@ -134,17 +141,20 @@ class GmshMesher:
             gmsh.finalize()
             return {"n_nodes": 0, "n_elems": 0}
 
-        # 4. First Pass: Find global maximum vertical edge to enforce a constant nz
+        # 4. First Pass: Find global maximum vertical edge to enforce a
+        # constant nz
         vertical_edges = []
         for dim, tag in gmsh.model.getEntities(1):
-            xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(dim, tag)
+            xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(
+                dim, tag)
             dz = zmax - zmin
             dxy = math.hypot(xmax - xmin, ymax - ymin)
             if dxy < 1e-4:
                 vertical_edges.append((tag, dz))
 
         if nz is None:
-            max_h = max([dz for _, dz in vertical_edges]) if vertical_edges else 0.1
+            max_h = max([dz for _, dz in vertical_edges]
+                        ) if vertical_edges else 0.1
             nz = max(1, int(round(max_h / self.target_size)))
 
         # 5. Apply structured Transfinite meshing rules per surface
@@ -158,7 +168,8 @@ class GmshMesher:
 
             for c_dim, c_tag in bnd:
                 c_tag_abs = abs(c_tag)
-                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(c_dim, c_tag_abs)
+                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(
+                    c_dim, c_tag_abs)
                 if math.hypot(xmax - xmin, ymax - ymin) < 1e-4:
                     v_tags.append(c_tag_abs)
                 else:
@@ -166,7 +177,8 @@ class GmshMesher:
                     h_lengths.append(gmsh.model.occ.getMass(c_dim, c_tag_abs))
 
             # Rule A: Web Fragments (Exactly 2 vertical edges)
-            # Because we only fragment webs against webs (vertical cuts), they remain 4-sided
+            # Because we only fragment webs against webs (vertical cuts), they
+            # remain 4-sided
             if len(v_tags) == 2:
                 for v_tag in v_tags:
                     gmsh.model.mesh.setTransfiniteCurve(v_tag, nz + 1)
@@ -176,9 +188,11 @@ class GmshMesher:
                     for h_tag in h_tags:
                         gmsh.model.mesh.setTransfiniteCurve(h_tag, nx + 1)
 
-            # Rule B: Wing Skin (0 vertical edges, 4 boundary edges forming a loop)
+            # Rule B: Wing Skin (0 vertical edges, 4 boundary edges forming a
+            # loop)
             elif len(v_tags) == 0 and len(bnd) == 4:
-                # bnd is ordered along the loop. 0 and 2 are opposite, 1 and 3 are opposite.
+                # bnd is ordered along the loop. 0 and 2 are opposite, 1 and 3
+                # are opposite.
                 edges = [abs(t) for _, t in bnd]
                 l0 = gmsh.model.occ.getMass(1, edges[0])
                 l1 = gmsh.model.occ.getMass(1, edges[1])
@@ -187,26 +201,37 @@ class GmshMesher:
 
                 nx02 = max(1, int(round(((l0 + l2) / 2.0) / self.skin_size)))
                 nx13 = max(1, int(round(((l1 + l3) / 2.0) / self.skin_size)))
-                
-                # Identify which pair is chordwise (the ones with smaller bounding box Y-span)
-                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(1, edges[0])
+
+                # Identify which pair is chordwise (the ones with smaller
+                # bounding box Y-span)
+                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(
+                    1, edges[0])
                 dy0 = ymax - ymin
-                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(1, edges[1])
+                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(
+                    1, edges[1])
                 dy1 = ymax - ymin
-                
+
                 is_02_chordwise = dy0 < dy1
-                
+
                 if is_02_chordwise:
-                    ctype_02, coef_02 = ("Bump", self.skin_clustering) if self.skin_clustering != 1.0 else ("Progression", 1.0)
+                    ctype_02, coef_02 = (
+                        "Bump", self.skin_clustering) if self.skin_clustering != 1.0 else (
+                        "Progression", 1.0)
                     ctype_13, coef_13 = "Progression", 1.0
                 else:
                     ctype_02, coef_02 = "Progression", 1.0
-                    ctype_13, coef_13 = ("Bump", self.skin_clustering) if self.skin_clustering != 1.0 else ("Progression", 1.0)
-                
-                gmsh.model.mesh.setTransfiniteCurve(edges[0], nx02 + 1, ctype_02, coef_02)
-                gmsh.model.mesh.setTransfiniteCurve(edges[2], nx02 + 1, ctype_02, coef_02)
-                gmsh.model.mesh.setTransfiniteCurve(edges[1], nx13 + 1, ctype_13, coef_13)
-                gmsh.model.mesh.setTransfiniteCurve(edges[3], nx13 + 1, ctype_13, coef_13)
+                    ctype_13, coef_13 = (
+                        "Bump", self.skin_clustering) if self.skin_clustering != 1.0 else (
+                        "Progression", 1.0)
+
+                gmsh.model.mesh.setTransfiniteCurve(
+                    edges[0], nx02 + 1, ctype_02, coef_02)
+                gmsh.model.mesh.setTransfiniteCurve(
+                    edges[2], nx02 + 1, ctype_02, coef_02)
+                gmsh.model.mesh.setTransfiniteCurve(
+                    edges[1], nx13 + 1, ctype_13, coef_13)
+                gmsh.model.mesh.setTransfiniteCurve(
+                    edges[3], nx13 + 1, ctype_13, coef_13)
 
             try:
                 gmsh.model.mesh.setTransfiniteSurface(tag)
@@ -234,7 +259,7 @@ class GmshMesher:
         n_nodes = len(node_tags)
         n_elems = 0
         for i, etype in enumerate(elem_types):
-            if etype == 3: # Quad
+            if etype == 3:  # Quad
                 n_elems += len(elem_tags[i])
 
         gmsh.finalize()

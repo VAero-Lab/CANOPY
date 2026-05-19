@@ -11,7 +11,9 @@ from build123d import Face, Plane, Compound
 
 from .structures import Seg
 
-def build_brep_webs(segs: List[Seg], aerowing, as_solid: bool = False, output_step: str = None):
+
+def build_brep_webs(segs: List[Seg], aerowing,
+                    as_solid: bool = False, output_step: str = None):
     """
     Convert fractal segments into B-rep Faces/Solids perfectly matching
     the AeroShape wing curvature.
@@ -75,35 +77,45 @@ def build_brep_webs(segs: List[Seg], aerowing, as_solid: bool = False, output_st
             from build123d import extrude
             thick = seg.thick
             # Extrude forward
-            solid1 = extrude(web_face, amount=thick/2)
+            solid1 = extrude(web_face, amount=thick / 2)
             # Extrude backward
-            solid2 = extrude(web_face, amount=-thick/2)
+            solid2 = extrude(web_face, amount=-thick / 2)
 
             web_shape = solid1.fuse(solid2)
         else:
             web_shape = web_face
 
         # Boolean Intersect with Wing OML!
-        # This automatically trims the top and bottom to match NURBS curvature perfectly.
+        # This automatically trims the top and bottom to match NURBS curvature
+        # perfectly.
         trimmed_web = web_shape.intersect(wing_shape)
 
         # FIX: Avoid degenerate 3-edged webs at the trailing edge
-        if not as_solid and trimmed_web.is_valid and len(trimmed_web.edges()) == 3:
+        if not as_solid and trimmed_web.is_valid and len(
+                trimmed_web.edges()) == 3:
             # The web converged to a sharp point at the trailing edge.
             # We pull the outboard tip inwards by 2% of the branch length.
             cut_dist = length * 0.02
             new_length = length - cut_dist
             new_mid_x = mid_x - (cut_dist / 2.0) * dir_x[0]
             new_mid_y = mid_y - (cut_dist / 2.0) * dir_x[1]
-            
-            new_workplane = Plane(origin=(new_mid_x, new_mid_y, 0.0), x_dir=dir_x, z_dir=dir_z)
-            new_web_face = Face.make_rect(new_length, 2 * Z_INF, plane=new_workplane)
+
+            new_workplane = Plane(
+                origin=(
+                    new_mid_x,
+                    new_mid_y,
+                    0.0),
+                x_dir=dir_x,
+                z_dir=dir_z)
+            new_web_face = Face.make_rect(
+                new_length, 2 * Z_INF, plane=new_workplane)
             trimmed_web = new_web_face.intersect(wing_shape)
 
         # Verify it successfully intersected
         if trimmed_web.is_valid:
             webs.append(trimmed_web)
-            properties[len(webs) - 1] = {"thickness": seg.thick, "level": seg.level, "id": i}
+            properties[len(webs) -
+                       1] = {"thickness": seg.thick, "level": seg.level, "id": i}
 
     # Combine webs into single CAD compound
     assembly = Compound(webs)
@@ -113,6 +125,7 @@ def build_brep_webs(segs: List[Seg], aerowing, as_solid: bool = False, output_st
         NurbsExporter.to_step(assembly, output_step)
 
     return assembly, properties
+
 
 def export_hollow_skin(aerowing, output_step: str):
     """
@@ -127,7 +140,8 @@ def export_hollow_skin(aerowing, output_step: str):
 
     # We only want hollow curved skin.
     # Skin surfaces are typically bounded by 4 edges (Root, Tip, LE, TE).
-    # Caps (Root/Tip) are usually bounded by 1 or 2 edges depending on the airfoil parameterization.
+    # Caps (Root/Tip) are usually bounded by 1 or 2 edges depending on the
+    # airfoil parameterization.
     skin_faces = [f for f in wing_solid.faces() if len(f.edges()) == 4]
 
     assembly = Compound(skin_faces)

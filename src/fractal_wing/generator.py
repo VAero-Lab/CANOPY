@@ -202,7 +202,8 @@ class TreeGenerator:
                 for s in (+1, -1):
                     self._grow(
                         end,
-                        np.array([np.cos(pa + s * theta), np.sin(pa + s * theta)]),
+                        np.array([np.cos(pa + s * theta),
+                                 np.sin(pa + s * theta)]),
                         cl, ct, level + 1, sub, depth + 1,
                     )
             else:
@@ -276,8 +277,10 @@ class ConvWB:
                 e1 = i / (self.nr - 1)
                 e2 = (i + 1) / (self.nr - 1)
                 segs.append(Seg(
-                    np.array([self.w.xle(e1) + f * self.w.c(e1), e1 * self.w.b]),
-                    np.array([self.w.xle(e2) + f * self.w.c(e2), e2 * self.w.b]),
+                    np.array(
+                        [self.w.xle(e1) + f * self.w.c(e1), e1 * self.w.b]),
+                    np.array(
+                        [self.w.xle(e2) + f * self.w.c(e2), e2 * self.w.b]),
                     0.003, 0, sid,
                 ))
                 sid += 1

@@ -61,7 +61,8 @@ class Viz:
 
     # ── 3-D view ────────────────────────────────────────────────
 
-    def view3d(self, br: List[Seg], title: str = '', elev: float = 25, azim: float = -50):
+    def view3d(self, br: List[Seg], title: str = '',
+               elev: float = 25, azim: float = -50):
         """3-D view with translucent skin and internal webs."""
         fig = plt.figure(figsize=(14, 8))
         ax = fig.add_subplot(111, projection='3d')
@@ -148,8 +149,20 @@ class Viz:
                 zu, zl = self.w.z_at(x, y)
                 Xu[i, j], Yu[i, j], Zu[i, j] = x, y, zu
                 Xl[i, j], Yl[i, j], Zl[i, j] = x, y, zl
-        ax.plot_surface(Xu, Yu, Zu, alpha=al, color='steelblue', edgecolor='none')
-        ax.plot_surface(Xl, Yl, Zl, alpha=al, color='steelblue', edgecolor='none')
+        ax.plot_surface(
+            Xu,
+            Yu,
+            Zu,
+            alpha=al,
+            color='steelblue',
+            edgecolor='none')
+        ax.plot_surface(
+            Xl,
+            Yl,
+            Zl,
+            alpha=al,
+            color='steelblue',
+            edgecolor='none')
 
     def _web3d(self, ax, segs):
         if not segs:
@@ -173,7 +186,8 @@ class Viz:
             polys.append(vtx)
             colors.append(c)
 
-        collection = Poly3DCollection(polys, facecolors=colors, edgecolors='none', alpha=0.8)
+        collection = Poly3DCollection(
+            polys, facecolors=colors, edgecolors='none', alpha=0.8)
         ax.add_collection3d(collection)
 
     def _xs(self, ax, segs, eta):

@@ -107,7 +107,8 @@ class SubParams:
 
         self.angles = _pad(self.angles, 30.0, self.max_depth)
         self.length_ratios = _pad(self.length_ratios, 0.55, self.max_depth)
-        self.thickness_ratios = _pad(self.thickness_ratios, 0.7, self.max_depth)
+        self.thickness_ratios = _pad(
+            self.thickness_ratios, 0.7, self.max_depth)
         self.n_children = _pad(self.n_children, 2, self.max_depth)
 
         # Normalise mode to a padded list

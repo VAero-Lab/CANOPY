@@ -7,6 +7,7 @@ This module bridges the 3D NURBS MultiSegmentWing from AeroShape with the
 
 import numpy as np
 
+
 class AeroWingAdapter:
     """
     Adapter that wraps an AeroShape MultiSegmentWing to provide the
@@ -34,7 +35,8 @@ class AeroWingAdapter:
         # Extract pre-computed sections from AeroShape
         self.frames = self.w.get_section_frames()
         if not self.frames:
-            raise ValueError("AeroShape wing must have defined segments/frames.")
+            raise ValueError(
+                "AeroShape wing must have defined segments/frames.")
 
         self.y_root = self.frames[0]['y']
         self.y_tip = self.frames[-1]['y']
@@ -165,8 +167,8 @@ class AeroWingAdapter:
 
             # Lower surface is from TE to LE (x decreases from 1 to 0)
             # Reverse it so x is monotonically increasing for np.interp
-            x_low = af_x[:le_idx+1][::-1]
-            z_low_curve = af_z[:le_idx+1][::-1]
+            x_low = af_x[:le_idx + 1][::-1]
+            z_low_curve = af_z[:le_idx + 1][::-1]
 
             z_max = np.interp(xi, x_up, z_up_curve)
             z_min = np.interp(xi, x_low, z_low_curve)

@@ -83,10 +83,22 @@ def make_mixed_stations(
         stations.append(Station(
             position=p,
             branches=[
-                BranchDef(angle=diag_angle,  length=bl_diag,  sub=copy.deepcopy(diag_sub)),
-                BranchDef(angle=-diag_angle, length=bl_diag,  sub=copy.deepcopy(diag_sub)),
-                BranchDef(angle=chord_angle, length=bl_chord, sub=copy.deepcopy(chord_sub)),
-                BranchDef(angle=-chord_angle,length=bl_chord, sub=copy.deepcopy(chord_sub)),
+                BranchDef(
+                    angle=diag_angle,
+                    length=bl_diag,
+                    sub=copy.deepcopy(diag_sub)),
+                BranchDef(
+                    angle=-diag_angle,
+                    length=bl_diag,
+                    sub=copy.deepcopy(diag_sub)),
+                BranchDef(
+                    angle=chord_angle,
+                    length=bl_chord,
+                    sub=copy.deepcopy(chord_sub)),
+                BranchDef(
+                    angle=-chord_angle,
+                    length=bl_chord,
+                    sub=copy.deepcopy(chord_sub)),
             ],
         ))
     return stations
@@ -136,7 +148,7 @@ def make_diagonal_only_stations(
         stations.append(Station(
             position=p,
             branches=[
-                BranchDef(angle=angle,  length=bl, sub=copy.deepcopy(sub)),
+                BranchDef(angle=angle, length=bl, sub=copy.deepcopy(sub)),
                 BranchDef(angle=-angle, length=bl, sub=copy.deepcopy(sub)),
             ],
         ))
@@ -242,13 +254,29 @@ def make_zoned_stations(
         tf = z.get('thick_frac', 0.7)
 
         branches = [
-            BranchDef(angle=da,  length=dl, thick_frac=tf, sub=copy.deepcopy(ds)),
-            BranchDef(angle=-da, length=dl, thick_frac=tf, sub=copy.deepcopy(ds)),
+            BranchDef(
+                angle=da,
+                length=dl,
+                thick_frac=tf,
+                sub=copy.deepcopy(ds)),
+            BranchDef(
+                angle=-da,
+                length=dl,
+                thick_frac=tf,
+                sub=copy.deepcopy(ds)),
         ]
         if ca is not None:
             branches.extend([
-                BranchDef(angle=ca,  length=cl, thick_frac=tf, sub=copy.deepcopy(cs)),
-                BranchDef(angle=-ca, length=cl, thick_frac=tf, sub=copy.deepcopy(cs)),
+                BranchDef(
+                    angle=ca,
+                    length=cl,
+                    thick_frac=tf,
+                    sub=copy.deepcopy(cs)),
+                BranchDef(
+                    angle=-ca,
+                    length=cl,
+                    thick_frac=tf,
+                    sub=copy.deepcopy(cs)),
             ])
 
         stations.append(Station(position=p, branches=branches))
@@ -300,7 +328,8 @@ def make_graded_stations(
     )
 
     # Normalise positions to [0, 1] for interpolation
-    p_norm = (positions - positions[0]) / max(positions[-1] - positions[0], 1e-10)
+    p_norm = (positions - positions[0]) / \
+        max(positions[-1] - positions[0], 1e-10)
 
     stations = []
     for i, p in enumerate(positions):
@@ -308,8 +337,10 @@ def make_graded_stations(
 
         ang = angle_range[0] + frac * (angle_range[1] - angle_range[0])
         length = length_range[0] + frac * (length_range[1] - length_range[0])
-        depth = int(round(depth_range[0] + frac * (depth_range[1] - depth_range[0])))
-        tf = thick_frac_range[0] + frac * (thick_frac_range[1] - thick_frac_range[0])
+        depth = int(round(depth_range[0] + frac *
+                    (depth_range[1] - depth_range[0])))
+        tf = thick_frac_range[0] + frac * \
+            (thick_frac_range[1] - thick_frac_range[0])
 
         # Mode selection
         if mode_sequence and len(mode_sequence) > 1:
@@ -330,22 +361,31 @@ def make_graded_stations(
         stations.append(Station(
             position=p,
             branches=[
-                BranchDef(angle=ang,  length=bl, thick_frac=tf, sub=copy.deepcopy(sub)),
-                BranchDef(angle=-ang, length=bl, thick_frac=tf, sub=copy.deepcopy(sub)),
+                BranchDef(
+                    angle=ang,
+                    length=bl,
+                    thick_frac=tf,
+                    sub=copy.deepcopy(sub)),
+                BranchDef(
+                    angle=-ang,
+                    length=bl,
+                    thick_frac=tf,
+                    sub=copy.deepcopy(sub)),
             ],
         ))
 
     return stations
 
+
 def ensure_open_te(af, cut_fraction: float = 0.01):
     """
     Ensures that an AeroShape AirfoilProfile has an open (blunt) trailing edge.
-    
+
     If the airfoil converges to a single point at the trailing edge, this removes
     the trailing edge points and rescales the remaining coordinates so that
     the chord length remains exactly 1.0. This prevents meshing singularities
     where internal webs would degenerate into 3-sided triangles.
-    
+
     Parameters
     ----------
     af : aeroshape.geometry.airfoils.AirfoilProfile
@@ -353,7 +393,7 @@ def ensure_open_te(af, cut_fraction: float = 0.01):
     cut_fraction : float
         The fraction of the chord to slice off the trailing edge if it is closed.
         Default is 0.01 (1%).
-        
+
     Returns
     -------
     aeroshape.geometry.airfoils.AirfoilProfile
@@ -364,44 +404,44 @@ def ensure_open_te(af, cut_fraction: float = 0.01):
 
     x = np.array(af.x)
     z = np.array(af.z)
-    
+
     x_max = np.max(x)
     te_points = np.where(x > 0.999 * x_max)[0]
     z_te = z[te_points]
-    
+
     if np.max(z_te) - np.min(z_te) < 1e-3 * x_max:
         le_idx = np.argmin(x)
         cut_x = x_max * (1.0 - cut_fraction)
-        
-        x_lower = x[:le_idx+1]
-        z_lower = z[:le_idx+1]
-        
+
+        x_lower = x[:le_idx + 1]
+        z_lower = z[:le_idx + 1]
+
         x_upper = x[le_idx:]
         z_upper = z[le_idx:]
-        
+
         # Interpolate at exactly cut_x
         z_lower_cut = np.interp(cut_x, x_lower[::-1], z_lower[::-1])
         z_upper_cut = np.interp(cut_x, x_upper, z_upper)
-        
+
         keep_lower = x_lower <= cut_x
         keep_upper = x_upper <= cut_x
-        
+
         new_x_lower = x_lower[keep_lower]
         new_z_lower = z_lower[keep_lower]
         new_x_lower = np.insert(new_x_lower, 0, cut_x)
         new_z_lower = np.insert(new_z_lower, 0, z_lower_cut)
-        
+
         new_x_upper = x_upper[keep_upper]
         new_z_upper = z_upper[keep_upper]
         new_x_upper = np.append(new_x_upper, cut_x)
         new_z_upper = np.append(new_z_upper, z_upper_cut)
-        
+
         new_x = np.concatenate([new_x_lower[:-1], new_x_upper])
         new_z = np.concatenate([new_z_lower[:-1], new_z_upper])
-        
+
         new_x = new_x / cut_x
         new_z = new_z / cut_x
-        
+
         return AirfoilProfile.from_points(new_x, new_z, name=f"{af.name}_open")
-        
+
     return af

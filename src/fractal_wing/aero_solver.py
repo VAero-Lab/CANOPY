@@ -9,11 +9,10 @@ and Inverse Distance Weighting (IDW).
 from __future__ import annotations
 
 import os
-import sys
 import json
 import subprocess
 import numpy as np
-from typing import Dict, List, Set, Tuple
+from typing import Dict, Set
 from scipy.spatial import cKDTree
 
 def run_aerodynamic_analysis(

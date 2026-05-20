@@ -7,7 +7,6 @@ a CalculiX static structural analysis with the mapped aerodynamic loads.
 """
 
 import os
-import numpy as np
 import fractal_wing as fw
 from utils import get_base_wing
 
@@ -79,8 +78,8 @@ def main():
         aoa=aoa,
         magVinf=velocity,
         rho=rho,
-        num_points_profile=80,  # 60 chordwise panels
-        num_points_spanwise=40, # 20 spanwise panels (demonstrates spanwise mesh control!)
+        num_points_profile=60,  # 60 chordwise panels
+        num_points_spanwise=20, # 20 spanwise panels (demonstrates spanwise mesh control)
         debug=True,
         temp_dir=OUT
     )

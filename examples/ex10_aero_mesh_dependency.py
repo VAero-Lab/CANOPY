@@ -1,3 +1,11 @@
+"""
+Example 10 — Aerodynamic Mesh Dependency Study
+================================================
+Systematically refines the chordwise and spanwise panel density of the
+FLOWPanel.jl 3D potential flow solver to verify asymptotic grid convergence
+of total Lift and Drag forces.
+"""
+
 import os
 import time
 import numpy as np

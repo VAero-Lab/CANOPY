@@ -1,9 +1,17 @@
-# FEM outputs
+# FEM / Aero outputs (generated at runtime)
+examples/output/
 examples/output_fem/
 examples/output_fem_aero/
-tests/
+examples/output_cad/
+examples/output_crossing/
 
-# Python cache
+# Python cache and build artifacts
 __pycache__/
 *.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
 
+# Julia precompilation cache
+Manifest.toml

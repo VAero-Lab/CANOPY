@@ -13,6 +13,7 @@ A professional, modularized Python package for the generation of fractal tree-li
 - **AeroShape NURBS Integration**: Directly query $C^2$-continuous aerodynamic surfaces to restrict fractal growth perfectly within real CAD boundaries.
 - **Fully Structured Hybrid Meshing**: Generates high-fidelity structured Quad (S4) shell meshes using Gmsh. Features independent, topologically locked wing skin meshing and perfectly conformal internal web fragment meshing.
 - **CalculiX & ParaView Integration**: Fully automated FEM pipeline that builds simulation decks, establishes rigorous mathematically-exact **Node-to-Node MPCs** (Multi-Point Constraints) for contact without brittle tolerances, applies boundary conditions, solves the structural response, and converts results to `.vtu` format for ParaView visualization.
+- **Integrated 3D Panel Aerodynamics**: Native coupling with `FLOWPanel.jl` (Julia) to run ultra-fast 3D panel method calculations over the wing's OML structured grid. Automatically maps distributed aerodynamic forces onto structural skin nodes using Inverse Distance Weighting (IDW) while mathematically conserving total force and moment resultant vectors.
 
 ## Installation
 
@@ -24,6 +25,14 @@ cd fractal_structures_wing
 pip install -e .
 pip install gmsh  # Required for FEM meshing
 ```
+
+### Aerodynamic Solver Setup (Julia)
+The aerodynamic features require a standard Julia installation. **No modifications are made to any external Julia libraries.** You can install the required official packages directly:
+
+```bash
+julia -e 'using Pkg; Pkg.add(["FLOWPanel", "JSON"])'
+```
+*(This will automatically download and install `FLOWPanel.jl` and `JSON.jl` in your default global environment or your active project environment.)*
 
 ## Quick Start
 
@@ -66,15 +75,33 @@ assembly, props = fw.build_brep_webs(segments, aero_wing, as_solid=False, output
 mesher = fw.GmshMesher(target_elem_size=0.025, skin_elem_size=0.05)
 stats = mesher.mesh(step_path, "fractal_mesh.inp", skin_step=skin_step_path, web_properties=props)
 
-# 7. Build Simulation Deck & Run CalculiX
+# 7. Run 3D Panel Aerodynamic Analysis (FLOWPanel.jl)
+aero_data = fw.run_aerodynamic_analysis(
+    wing=aero_wing,
+    aoa=4.0,
+    magVinf=30.0,
+    rho=1.225
+)
+
+# 8. Map aerodynamic panel forces onto structural skin nodes
+nodes, skin_nodes = fw.parse_mesh_for_mapping("fractal_mesh.inp")
+mapped_forces = fw.map_aerodynamic_loads(
+    aero_centroids=aero_data["centroids"],
+    aero_forces=aero_data["forces"],
+    nodes_dict=nodes,
+    skin_node_ids=skin_nodes
+)
+
+# 9. Build simulation deck with mapped aerodynamic loads & Run CalculiX
 sim_path = fw.build_ccx_deck(
     mesh_inp="fractal_mesh.inp",
     web_properties=props,
     segments=segments,
-    point_loads=[{'x_frac': 0.0, 'load': -500.0}, {'x_frac': 1.0, 'load': -500.0}]
+    skin_thickness=0.003,
+    mapped_aero_forces=mapped_forces
 )
 
-# 8. Run solver with automatic parallelism & convert results to VTU
+# 10. Run solver with automatic parallelism & convert results to VTU
 result = fw.run_ccx(sim_path, convert_vtu=True)
 print(f"Solver finished in {result['elapsed_s']:.1f}s")
 ```
@@ -99,6 +126,8 @@ The `examples/` directory contains demonstration scripts covering core capabilit
 - `ex06_fem_export.py`: Extracts exact mathematical topology via OpenCASCADE and generates a Gmsh structured mesh for CalculiX, executing the full simulation pipeline.
 - `ex07_aeroshape_integration.py`: Demonstrates CAD boolean operations with AeroShape NURBS models.
 - `ex08_fem_organic.py`: End-to-end FEM simulation for a dense, spanwise-zoned organic fractal structure with multiple distributed point loads.
+- `ex09_aero_loads.py`: Full end-to-end multi-disciplinary design and analysis (MDA) loop coupling planform generation, CAD STEP export, Gmsh meshing, FLOWPanel.jl 3D aerodynamic panel solve, IDW load transfer with resultant conservation checks, and clamped CalculiX structural static analysis solve.
+- `ex10_aero_mesh_dependency.py`: Aerodynamic mesh dependency study showing grid convergence of Lift and Drag coefficients as the chordwise and spanwise panel densities are systematically refined.
 
 ## License
 

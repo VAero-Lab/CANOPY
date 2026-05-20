@@ -1,7 +1,9 @@
 LICENSE
 README.md
 pyproject.toml
+setup.cfg
 src/fractal_wing/__init__.py
+src/fractal_wing/aero_solver.py
 src/fractal_wing/aeroshape_adapter.py
 src/fractal_wing/cad_export.py
 src/fractal_wing/distributions.py
@@ -17,3 +19,4 @@ src/fractal_wing.egg-info/SOURCES.txt
 src/fractal_wing.egg-info/dependency_links.txt
 src/fractal_wing.egg-info/requires.txt
 src/fractal_wing.egg-info/top_level.txt
+tests/test_aero_solver.py

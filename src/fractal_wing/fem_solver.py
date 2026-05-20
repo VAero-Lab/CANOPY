@@ -159,6 +159,15 @@ def _get_element_nodes_for_elset(elset_name: str, elements: dict,
     return node_ids
 
 
+def parse_mesh_for_mapping(mesh_inp: str) -> Tuple[Dict[int, Tuple[float, float, float]], Set[int]]:
+    """Parse mesh file to get all nodes and the set of skin node IDs."""
+    nodes = _parse_inp_nodes(mesh_inp)
+    elements = _parse_inp_elements(mesh_inp)
+    elsets = _parse_inp_elsets(mesh_inp)
+    skin_nodes = _get_element_nodes_for_elset('WingSkin', elements, elsets)
+    return nodes, skin_nodes
+
+
 def build_ccx_deck(
     mesh_inp: str,
     web_properties: Dict[int, dict],
@@ -171,6 +180,7 @@ def build_ccx_deck(
     output_path: str = None,
     solver: str = None,
     binary_output: bool = False,
+    mapped_aero_forces: Dict[int, np.ndarray] = None,
 ) -> str:
     """
     Build a complete CalculiX simulation deck from a Gmsh mesh .inp file.
@@ -449,10 +459,24 @@ def build_ccx_deck(
     lines.append('NSET_ROOT, 1, 6')
     lines.append('**')
 
-    for n_id, load_val in applied_loads:
-        lines.append('*CLOAD')
-        lines.append(f'{n_id}, 3, {load_val}')
+    if mapped_aero_forces is not None:
         lines.append('**')
+        lines.append('** MAPPED AERODYNAMIC LOADS')
+        lines.append('**')
+        for n_id, force in mapped_aero_forces.items():
+            lines.append('*CLOAD')
+            if abs(force[0]) > 1e-6:
+                lines.append(f'{n_id}, 1, {force[0]:.8e}'.upper())
+            if abs(force[1]) > 1e-6:
+                lines.append(f'{n_id}, 2, {force[1]:.8e}'.upper())
+            if abs(force[2]) > 1e-6:
+                lines.append(f'{n_id}, 3, {force[2]:.8e}'.upper())
+        lines.append('**')
+    else:
+        for n_id, load_val in applied_loads:
+            lines.append('*CLOAD')
+            lines.append(f'{n_id}, 3, {load_val}')
+            lines.append('**')
 
     if binary_output:
         lines.append('*NODE OUTPUT')

@@ -1,5 +1,6 @@
 # FEM outputs
 examples/output_fem/
+examples/output_fem_aero/
 tests/
 
 # Python cache

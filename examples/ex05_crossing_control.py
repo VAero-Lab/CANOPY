@@ -294,9 +294,53 @@ def main():
     plt.close(fig)
 
     # ════════════════════════════════════════════════════════════
-    # 8. Gallery: all crossing-OFF results
+    # 8. Unprotected Trunk Dynamic Termination (protect_trunk=False)
     # ════════════════════════════════════════════════════════════
-    print('\n  8. Gallery — all crossing-OFF designs')
+    print('\n  8. Unprotected Trunk Dynamic Termination (protect_trunk=False)')
+
+    # Primary trunk is fully protected, secondary trunk stops when it hits primary's branches
+    specs_dyn = [
+        fw.TrunkSpec(
+            chord_frac=0.3, span_cov=1.0, thick=0.004,
+            stations=fw.make_mixed_stations(
+                n_stations=14, diag_angle=40, chord_angle=70,
+                diag_length=3.0, chord_length=2.0,
+                diag_sub=fw.SubParams(max_depth=3, angles=[30, 25, 20], mode='sympodial', min_length=0.02),
+                chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+            ),
+            allow_crossing=False,
+            protect_trunk=True, # Primary trunk ignores crossings
+        ),
+        fw.TrunkSpec(
+            chord_frac=0.8, span_cov=1.0, thick=0.004,
+            stations=fw.make_mixed_stations(
+                n_stations=14, diag_angle=-40, chord_angle=-70,
+                diag_length=2.5, chord_length=2.0,
+                diag_sub=fw.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.02),
+                chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+            ),
+            allow_crossing=False,
+            protect_trunk=False, # Secondary trunk dynamically stops if it hits a crossing
+        ),
+    ]
+
+    gen_dyn = fw.TreeGenerator(wing_fw)
+    segs_dyn = gen_dyn.generate_multi(specs_dyn)
+    st_dyn = gen_dyn.stats()
+    print(f'    dynamic termination: {st_dyn["n"]} segs')
+
+    fig = viz_fw.view3d(
+        segs_dyn,
+        title=f'Dynamic Trunk Termination ({st_dyn["n"]} segs)\nPrimary protected (chord_frac=0.3), Secondary unprotected (chord_frac=0.8)',
+    )
+    fig.savefig(f'{OUT}/ex05_08_dynamic_termination.png', dpi=150, bbox_inches='tight')
+    plt.show()
+    plt.close(fig)
+
+    # ════════════════════════════════════════════════════════════
+    # 9. Gallery: all crossing-OFF results
+    # ════════════════════════════════════════════════════════════
+    print('\n  9. Gallery — all crossing-OFF designs')
 
     # Re-generate the best crossing-OFF configs for a gallery
     configs = [
@@ -322,7 +366,7 @@ def main():
     fig = viz_fw.multi(gallery, ww=4.5)
     fig.suptitle('Gallery — all designs with crossing OFF',
                  fontsize=14, fontweight='bold', y=1.02)
-    fig.savefig(f'{OUT}/ex05_08_gallery_nocross.png', dpi=150, bbox_inches='tight')
+    fig.savefig(f'{OUT}/ex05_09_gallery_nocross.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
 
     print(f'\n{"="*65}')

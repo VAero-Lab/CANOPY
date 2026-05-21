@@ -128,7 +128,9 @@ class TreeGenerator:
                     break
                 p1 = c
 
-            self._add_seg(p0, p1, spec.thick, 0)
+            added = self._add_seg(p0, p1, spec.thick, 0, protected=spec.protect_trunk)
+            if not added:
+                break
 
             st = objs[i + 1]
             if st is not None:
@@ -142,9 +144,16 @@ class TreeGenerator:
                     )
                 cur_a += np.radians(st.mono_defl)
 
-    def _add_seg(self, p0, p1, thick, level) -> bool:
-        """Add segment, checking for crossings if enabled."""
-        if not self._allow_crossing:
+    def _add_seg(self, p0, p1, thick, level, protected=False) -> bool:
+        """Add segment, checking for crossings if enabled.
+
+        Parameters
+        ----------
+        protected : bool
+            If True, the segment is always added regardless of crossings.
+            Used for trunk (level 0) segments that must never be interrupted.
+        """
+        if not protected and not self._allow_crossing:
             for s in self.segs:
                 if segments_cross(p0, p1, s.p0, s.p1):
                     return False

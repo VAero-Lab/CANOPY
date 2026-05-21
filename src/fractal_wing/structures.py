@@ -231,3 +231,4 @@ class TrunkSpec:
     stations: List[Station] = None
     allow_crossing: bool = True
     dir_offset: float = 0.0
+    protect_trunk: bool = True

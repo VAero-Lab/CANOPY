@@ -1,7 +1,7 @@
 site_name: FROND Documentation
 site_description: Fractal Recursive Organic Network Design
-repo_url: https://github.com/victor-alulema/fractal_structures_wing # Note: Update this to frond if you change the repo name
-repo_name: victor-alulema/fractal_structures_wing
+repo_url: https://github.com/VAero-Lab/FROND
+repo_name: VAero-Lab/FROND
 
 theme:
   name: material
@@ -18,8 +18,8 @@ theme:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: teal
-      accent: deep orange
+      primary: black
+      accent: amber
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
@@ -27,8 +27,8 @@ theme:
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: teal
-      accent: deep orange
+      primary: black
+      accent: amber
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -60,6 +60,9 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Examples:
+    - Example 11 (2D Flapping Wing): examples/ex11.md
+    - Example 09 (3D Aero Loads): examples/ex09.md
   - API Reference:
     - Generator: api/generator.md
     - Meshing: api/meshing.md

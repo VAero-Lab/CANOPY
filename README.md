@@ -2,6 +2,8 @@
 
 A professional, modularized Python package for the generation of fractal tree-like structures for aerodynamic wing design. The package provides high-level versatility for structural optimization by implementing non-uniform station distribution laws, per-depth branching mode switching, per-branch thickness control, multi-trunk support, and automated self-intersection avoidance.
 
+**📖 Official Documentation:** [https://vaero-lab.github.io/FROND/](https://vaero-lab.github.io/FROND/)
+
 ![Organic Zoned Design](docs/images/organic_zoned.png)
 
 ## Features

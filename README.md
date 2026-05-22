@@ -140,12 +140,11 @@ Instead of displaying bound vortex filaments as colored wireframe edges (the def
 - Binds aerodynamic variables (`circulation`, `force_magnitude`, `force_x`, `force_y`, `force_z`) as **cell-centered data**.
 - **ParaView Usage**: Open the file, change the **Representation** from *Outline* to **Surface**, and choose the desired color variable to view a smooth, continuous load distribution.
 
-### 2. Isolated Beam and Skin Post-Processing (`_beams_1d.vtu` and `_skin_2d.vtu`)
-Because CalculiX outputs a single mixed-type mesh, standard ParaView filters (like the **Tube** filter for beam members) are disabled. The solver automatically splits the output `.vtu` file:
-- **`*_beams_1d.vtu`**: Isolates all 1D beam elements (`B31`/`B32`) as standard 1D lines, preserving simulation results (`U`, `S`, `S_Mises`).
-  - **ParaView Usage**: Load this file, select it, apply the **Tube** filter, and adjust the radius to visualize the actual circular bars.
-- **`*_skin_2d.vtu`**: Isolates all 2D shell elements (`S3`/`S4`) as standard 2D flat surfaces.
-- **`*_skin.vtu`**: Contains the 3D-extruded volumetric representations of the skin elements.
+### 2. Isolated Beam and Skin Post-Processing (`_beams.vtp` and `_skin.vtu`)
+Because CalculiX outputs a single mixed-type mesh, standard ParaView filters (like the **Tube** filter for beam members) are disabled. The solver automatically splits the output mesh file:
+- **`*_beams.vtp`**: Isolates all 1D beam elements (`B31`/`B32`) as standard 1D lines in a true PolyData format, preserving simulation results (`U`, `S`, `S_Mises`). Crucially, it parses the actual physical beam radius from the `.inp` deck and stores it as a `TubeRadius` point-data array.
+  - **ParaView Usage**: Load this file, select it, apply the **Tube** filter, set *Vary Radius* to **By Absolute Scalar**, and select **TubeRadius** to visualize the structure with its true, variable physical dimensions.
+- **`*_skin.vtu`**: Isolates all 2D shell elements (`S3`/`S4`) and contains their 3D-extruded volumetric representations.
 
 ## License
 

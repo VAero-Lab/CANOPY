@@ -152,6 +152,7 @@ def split_vtu_file(vtu_path: str):
         # Paths for output files
         base_dir = os.path.dirname(vtu_path)
         base_name = os.path.splitext(os.path.basename(vtu_path))[0]
+        generated_files = {}
 
         # 1. Output the extruded skin-only mesh (hexahedrons)
         skin_cells_3d = []
@@ -175,6 +176,7 @@ def split_vtu_file(vtu_path: str):
             skin_3d_path = os.path.join(base_dir, f"{base_name}_skin.vtu")
             meshio.write(skin_3d_path, skin_mesh_3d)
             print(f"  -> Generated 3D extruded skin mesh: {skin_3d_path}")
+            generated_files["Skin"] = f"{base_name}_skin.vtu"
 
         # 2. Parse the original CalculiX INP file to extract 1D beams and 2D skin elements
         inp_path = os.path.join(base_dir, f"{base_name}.inp")
@@ -185,11 +187,13 @@ def split_vtu_file(vtu_path: str):
             return
 
         nodes = {}
-        beam_elements = []
+        beam_elements = []  # stores (elset_name, conn)
         skin_elements = []
 
         current_mode = None
         element_type = None
+        current_elset = None
+        beam_sections = {}
 
         with open(inp_path, "r") as f:
             for line in f:
@@ -203,10 +207,20 @@ def split_vtu_file(vtu_path: str):
                     elif header == "*ELEMENT" or header.startswith("*ELEMENT,"):
                         current_mode = "element"
                         element_type = None
+                        current_elset = None
                         parts = header.split(",")
                         for part in parts:
                             if "TYPE=" in part:
                                 element_type = part.split("=")[1].strip()
+                            elif "ELSET=" in part:
+                                current_elset = part.split("=")[1].strip()
+                    elif header.startswith("*BEAM SECTION"):
+                        current_mode = "beam_section"
+                        current_elset = None
+                        parts = header.split(",")
+                        for part in parts:
+                            if "ELSET=" in part:
+                                current_elset = part.split("=")[1].strip()
                     else:
                         current_mode = None
                     continue
@@ -220,9 +234,17 @@ def split_vtu_file(vtu_path: str):
                     parts = line_str.split(",")
                     conn = [int(p.strip()) for p in parts[1:] if p.strip()]
                     if element_type in ["B31", "B32"]:
-                        beam_elements.append(conn)
+                        beam_elements.append((current_elset, conn))
                     elif element_type in ["S3", "S4"]:
                         skin_elements.append(conn)
+                elif current_mode == "beam_section":
+                    try:
+                        radius = float(line_str.split(",")[0].strip())
+                        if current_elset:
+                            beam_sections[current_elset] = radius
+                    except ValueError:
+                        pass
+                    current_mode = None
 
         if not nodes:
             print(f"  -> Warning: No nodes parsed from {inp_path}")
@@ -243,53 +265,101 @@ def split_vtu_file(vtu_path: str):
         for key, val in mesh.point_data.items():
             point_data[key] = val[indices]
 
-        # 3. Write 1D Beams (VTU_LINE)
+        # 3. Write 1D Beams (VTK PolyData with TubeRadius)
         if beam_elements:
-            lines_conn = []
-            for elem in beam_elements:
-                cell_conn = [nid_to_idx[nid] for nid in elem]
-                if len(cell_conn) == 2:
-                    lines_conn.append([cell_conn[0], cell_conn[1]])
-                elif len(cell_conn) >= 3:
-                    lines_conn.append([cell_conn[0], cell_conn[2]])
-                    lines_conn.append([cell_conn[2], cell_conn[1]])
+            try:
+                import vtk
+                beam_nodes = set()
+                for elset_name, conn in beam_elements:
+                    for nid in conn:
+                        beam_nodes.add(nid)
+                
+                beam_node_list = sorted(list(beam_nodes))
+                beam_nid_to_idx = {nid: idx for idx, nid in enumerate(beam_node_list)}
+                
+                pts_vtk = vtk.vtkPoints()
+                for nid in beam_node_list:
+                    c = nodes[nid]
+                    pts_vtk.InsertNextPoint(c[0], c[1], c[2])
+                    
+                lines_vtk = vtk.vtkCellArray()
+                node_radii = {nid: 0.0 for nid in beam_node_list}
+                
+                for elset_name, conn in beam_elements:
+                    r = beam_sections.get(elset_name, 0.0025)
+                    for nid in conn:
+                        node_radii[nid] = max(node_radii[nid], r)
+                    
+                    if len(conn) == 2:
+                        line = vtk.vtkLine()
+                        line.GetPointIds().SetId(0, beam_nid_to_idx[conn[0]])
+                        line.GetPointIds().SetId(1, beam_nid_to_idx[conn[1]])
+                        lines_vtk.InsertNextCell(line)
+                    elif len(conn) >= 3:
+                        line1 = vtk.vtkLine()
+                        line1.GetPointIds().SetId(0, beam_nid_to_idx[conn[0]])
+                        line1.GetPointIds().SetId(1, beam_nid_to_idx[conn[2]])
+                        lines_vtk.InsertNextCell(line1)
+                        line2 = vtk.vtkLine()
+                        line2.GetPointIds().SetId(0, beam_nid_to_idx[conn[2]])
+                        line2.GetPointIds().SetId(1, beam_nid_to_idx[conn[1]])
+                        lines_vtk.InsertNextCell(line2)
 
-            beam_mesh_1d = meshio.Mesh(
-                points=node_coords,
-                cells=[("line", np.array(lines_conn))],
-                point_data=point_data,
-            )
-            beam_1d_path = os.path.join(base_dir, f"{base_name}_beams_1d.vtu")
-            meshio.write(beam_1d_path, beam_mesh_1d)
-            print(
-                f"  -> Generated 1D beam-only mesh (for Tube filter): {beam_1d_path}"
-            )
+                polydata = vtk.vtkPolyData()
+                polydata.SetPoints(pts_vtk)
+                polydata.SetLines(lines_vtk)
+                
+                radius_array = vtk.vtkFloatArray()
+                radius_array.SetName("TubeRadius")
+                radius_array.SetNumberOfComponents(1)
+                for nid in beam_node_list:
+                    radius_array.InsertNextValue(node_radii[nid])
+                polydata.GetPointData().AddArray(radius_array)
+                
+                for key, val_array in mesh.point_data.items():
+                    arr_vtk = vtk.vtkFloatArray() if val_array.dtype.kind == 'f' else vtk.vtkIntArray()
+                    arr_vtk.SetName(key)
+                    if len(val_array.shape) > 1:
+                        n_comp = val_array.shape[1]
+                        arr_vtk.SetNumberOfComponents(n_comp)
+                        for nid in beam_node_list:
+                            mapped_idx = nid_to_idx[nid]
+                            val = val_array[indices[mapped_idx]]
+                            arr_vtk.InsertNextTuple(val.tolist())
+                    else:
+                        arr_vtk.SetNumberOfComponents(1)
+                        for nid in beam_node_list:
+                            mapped_idx = nid_to_idx[nid]
+                            arr_vtk.InsertNextValue(float(val_array[indices[mapped_idx]]))
+                    polydata.GetPointData().AddArray(arr_vtk)
 
-        # 4. Write 2D Skin (VTU_QUAD or VTU_TRIANGLE)
-        if skin_elements:
-            quad_conn = []
-            tri_conn = []
-            for elem in skin_elements:
-                cell_conn = [nid_to_idx[nid] for nid in elem]
-                if len(cell_conn) == 3:
-                    tri_conn.append(cell_conn)
-                elif len(cell_conn) == 4:
-                    quad_conn.append(cell_conn)
+                writer = vtk.vtkXMLPolyDataWriter()
+                beam_vtp_path = os.path.join(base_dir, f"{base_name}_beams.vtp")
+                writer.SetFileName(beam_vtp_path)
+                writer.SetInputData(polydata)
+                writer.Write()
+                print(f"  -> Generated 1D beam PolyData mesh (for Tube filter): {beam_vtp_path}")
+                generated_files["Beams"] = f"{base_name}_beams.vtp"
+            except ImportError:
+                print("  -> Warning: 'vtk' module not installed. Cannot export VTP beams mesh.")
 
-            skin_cells_2d = []
-            if quad_conn:
-                skin_cells_2d.append(("quad", np.array(quad_conn)))
-            if tri_conn:
-                skin_cells_2d.append(("triangle", np.array(tri_conn)))
-
-            skin_mesh_2d = meshio.Mesh(
-                points=node_coords,
-                cells=skin_cells_2d,
-                point_data=point_data,
-            )
-            skin_2d_path = os.path.join(base_dir, f"{base_name}_skin_2d.vtu")
-            meshio.write(skin_2d_path, skin_mesh_2d)
-            print(f"  -> Generated 2D skin-only surface mesh: {skin_2d_path}")
+        # 4. Generate combined VTM and cleanup
+        if generated_files:
+            import xml.etree.ElementTree as ET
+            root = ET.Element("VTKFile", type="vtkMultiBlockDataSet", version="1.0", byte_order="LittleEndian")
+            mbds = ET.SubElement(root, "vtkMultiBlockDataSet")
+            for i, (name, fname) in enumerate(generated_files.items()):
+                ET.SubElement(mbds, "DataSet", index=str(i), file=fname, name=name)
+                
+            tree = ET.ElementTree(root)
+            vtm_path = os.path.join(base_dir, f"{base_name}_combined.vtm")
+            ET.indent(tree, space="  ")
+            tree.write(vtm_path, encoding="utf-8", xml_declaration=True)
+            print(f"  -> Generated combined MultiBlock Dataset: {vtm_path}")
+            
+            # Remove redundant mixed VTU file
+            if os.path.exists(vtu_path):
+                os.remove(vtu_path)
 
     except Exception as e:
         print(f"  -> Warning: Could not split/reconstruct VTU files: {e}")

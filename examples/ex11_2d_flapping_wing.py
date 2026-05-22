@@ -70,8 +70,9 @@ def main():
     # 4. Aerodynamics (VortexLattice.jl VLM)
     print("\nRunning VLM Aerodynamics...")
     aoa = 5.0
-    V = 10.0
-    aero_data = run_vlm_analysis(wing, aoa=aoa, magVinf=V, num_x=20, num_y=40, save_vtk=True)
+    V = 20.0
+    density = 1.0
+    aero_data = run_vlm_analysis(wing, aoa=aoa, magVinf=V, rho=density, num_x=30, num_y=60, save_vtk=True)
     
     # 5. Load Mapping
     print("\nMapping Aerodynamic Loads to Skin Mesh...")

@@ -112,6 +112,7 @@ def run_ccx(
             c.run()
             vtu_path = frd_path.replace(".frd", ".vtu")
             print(f"  -> VTU file generated: {vtu_path}")
+            split_vtu_file(vtu_path)
         except ImportError:
             print("  -> ccx2paraview not installed. Run: pip install ccx2paraview")
         except Exception as e:
@@ -126,3 +127,171 @@ def run_ccx(
         "stdout": result.stdout[-1000:] if result.stdout else "",
         "stderr": result.stderr[-1000:] if result.stderr else "",
     }
+
+
+def split_vtu_file(vtu_path: str):
+    """
+    Splits a CalculiX VTU file (which ccx2paraview has extruded to 3D bricks)
+    into:
+      1. An extruded skin-only VTU file ('_skin.vtu')
+      2. A 2D skin-only surface VTU file ('_skin_2d.vtu')
+      3. A 1D beam-only line VTU file ('_beams_1d.vtu')
+    This allows applying the Tube filter to the 1D beams in ParaView.
+    """
+    if not vtu_path or not os.path.isfile(vtu_path):
+        return
+
+    try:
+        import meshio
+        import numpy as np
+        from scipy.spatial import KDTree
+
+        # Read the extruded VTU file
+        mesh = meshio.read(vtu_path)
+
+        # Paths for output files
+        base_dir = os.path.dirname(vtu_path)
+        base_name = os.path.splitext(os.path.basename(vtu_path))[0]
+
+        # 1. Output the extruded skin-only mesh (hexahedrons)
+        skin_cells_3d = []
+        skin_cell_data_3d = {}
+        for key in mesh.cell_data:
+            skin_cell_data_3d[key] = []
+
+        for i, cell_block in enumerate(mesh.cells):
+            if cell_block.type == "hexahedron":
+                skin_cells_3d.append(cell_block)
+                for key in mesh.cell_data:
+                    skin_cell_data_3d[key].append(mesh.cell_data[key][i])
+
+        if skin_cells_3d:
+            skin_mesh_3d = meshio.Mesh(
+                points=mesh.points,
+                cells=skin_cells_3d,
+                point_data=mesh.point_data,
+                cell_data=skin_cell_data_3d,
+            )
+            skin_3d_path = os.path.join(base_dir, f"{base_name}_skin.vtu")
+            meshio.write(skin_3d_path, skin_mesh_3d)
+            print(f"  -> Generated 3D extruded skin mesh: {skin_3d_path}")
+
+        # 2. Parse the original CalculiX INP file to extract 1D beams and 2D skin elements
+        inp_path = os.path.join(base_dir, f"{base_name}.inp")
+        if not os.path.isfile(inp_path):
+            print(
+                f"  -> Warning: CalculiX INP file not found: {inp_path}. Cannot generate 1D beams or 2D skin."
+            )
+            return
+
+        nodes = {}
+        beam_elements = []
+        skin_elements = []
+
+        current_mode = None
+        element_type = None
+
+        with open(inp_path, "r") as f:
+            for line in f:
+                line_str = line.strip()
+                if not line_str or line_str.startswith("**"):
+                    continue
+                if line_str.startswith("*"):
+                    header = line_str.upper()
+                    if header == "*NODE" or header.startswith("*NODE,"):
+                        current_mode = "node"
+                    elif header == "*ELEMENT" or header.startswith("*ELEMENT,"):
+                        current_mode = "element"
+                        element_type = None
+                        parts = header.split(",")
+                        for part in parts:
+                            if "TYPE=" in part:
+                                element_type = part.split("=")[1].strip()
+                    else:
+                        current_mode = None
+                    continue
+
+                if current_mode == "node":
+                    parts = line_str.split(",")
+                    node_id = int(parts[0].strip())
+                    coords = [float(p.strip()) for p in parts[1:4]]
+                    nodes[node_id] = coords
+                elif current_mode == "element":
+                    parts = line_str.split(",")
+                    conn = [int(p.strip()) for p in parts[1:] if p.strip()]
+                    if element_type in ["B31", "B32"]:
+                        beam_elements.append(conn)
+                    elif element_type in ["S3", "S4"]:
+                        skin_elements.append(conn)
+
+        if not nodes:
+            print(f"  -> Warning: No nodes parsed from {inp_path}")
+            return
+
+        # Match original nodes to their closest indices in the VTU mesh points
+        tree = KDTree(mesh.points)
+        node_ids = sorted(nodes.keys())
+        node_coords = np.array([nodes[nid] for nid in node_ids])
+
+        distances, indices = tree.query(node_coords)
+
+        # Map original node IDs to their indices (0-based) in our node_ids list
+        nid_to_idx = {nid: idx for idx, nid in enumerate(node_ids)}
+
+        # Map point data to the original nodes
+        point_data = {}
+        for key, val in mesh.point_data.items():
+            point_data[key] = val[indices]
+
+        # 3. Write 1D Beams (VTU_LINE)
+        if beam_elements:
+            lines_conn = []
+            for elem in beam_elements:
+                cell_conn = [nid_to_idx[nid] for nid in elem]
+                if len(cell_conn) == 2:
+                    lines_conn.append([cell_conn[0], cell_conn[1]])
+                elif len(cell_conn) >= 3:
+                    lines_conn.append([cell_conn[0], cell_conn[2]])
+                    lines_conn.append([cell_conn[2], cell_conn[1]])
+
+            beam_mesh_1d = meshio.Mesh(
+                points=node_coords,
+                cells=[("line", np.array(lines_conn))],
+                point_data=point_data,
+            )
+            beam_1d_path = os.path.join(base_dir, f"{base_name}_beams_1d.vtu")
+            meshio.write(beam_1d_path, beam_mesh_1d)
+            print(
+                f"  -> Generated 1D beam-only mesh (for Tube filter): {beam_1d_path}"
+            )
+
+        # 4. Write 2D Skin (VTU_QUAD or VTU_TRIANGLE)
+        if skin_elements:
+            quad_conn = []
+            tri_conn = []
+            for elem in skin_elements:
+                cell_conn = [nid_to_idx[nid] for nid in elem]
+                if len(cell_conn) == 3:
+                    tri_conn.append(cell_conn)
+                elif len(cell_conn) == 4:
+                    quad_conn.append(cell_conn)
+
+            skin_cells_2d = []
+            if quad_conn:
+                skin_cells_2d.append(("quad", np.array(quad_conn)))
+            if tri_conn:
+                skin_cells_2d.append(("triangle", np.array(tri_conn)))
+
+            skin_mesh_2d = meshio.Mesh(
+                points=node_coords,
+                cells=skin_cells_2d,
+                point_data=point_data,
+            )
+            skin_2d_path = os.path.join(base_dir, f"{base_name}_skin_2d.vtu")
+            meshio.write(skin_2d_path, skin_mesh_2d)
+            print(f"  -> Generated 2D skin-only surface mesh: {skin_2d_path}")
+
+    except Exception as e:
+        print(f"  -> Warning: Could not split/reconstruct VTU files: {e}")
+
+

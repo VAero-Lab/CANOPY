@@ -11,7 +11,7 @@ from __future__ import annotations
 import io
 import re
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Set
 
 
 # Pre-compiled regex for parsing ELSET names (used in multiple parsers)
@@ -53,7 +53,11 @@ def _parse_inp_nodes(inp_path: str) -> Dict[int, Tuple[float, float, float]]:
                 continue
             if in_nodes:
                 if stripped.startswith('*'):
-                    break
+                    in_nodes = False
+                    # We don't break because there might be multiple *NODE blocks
+                    if stripped.upper().startswith('*NODE'):
+                        in_nodes = True
+                    continue
                 if stripped:
                     node_lines.append(stripped.rstrip(','))
 
@@ -129,9 +133,9 @@ def _parse_inp_elements(
                     continue
                 parts = stripped.rstrip(',').split(',')
                 parts = [p.strip() for p in parts if p.strip()]
-                if len(parts) >= 5:
+                if len(parts) >= 3:
                     eid = int(parts[0])
-                    conn = [int(p) for p in parts[1:5]]
+                    conn = [int(p) for p in parts[1:]]
                     elements[current_set].append((eid, conn))
     return elements
 
@@ -159,12 +163,13 @@ def _get_element_nodes_for_elset(elset_name: str, elements: dict,
     return node_ids
 
 
-def parse_mesh_for_mapping(mesh_inp: str) -> Tuple[Dict[int, Tuple[float, float, float]], Set[int]]:
+def parse_mesh_for_mapping(
+        mesh_inp: str, elset_name: str = 'WingSkin') -> Tuple[Dict[int, Tuple[float, float, float]], Set[int]]:
     """Parse mesh file to get all nodes and the set of skin node IDs."""
     nodes = _parse_inp_nodes(mesh_inp)
     elements = _parse_inp_elements(mesh_inp)
     elsets = _parse_inp_elsets(mesh_inp)
-    skin_nodes = _get_element_nodes_for_elset('WingSkin', elements, elsets)
+    skin_nodes = _get_element_nodes_for_elset(elset_name, elements, elsets)
     return nodes, skin_nodes
 
 
@@ -181,6 +186,7 @@ def build_ccx_deck(
     solver: str = None,
     binary_output: bool = False,
     mapped_aero_forces: Dict[int, np.ndarray] = None,
+    skin_elset_name: str = 'WingSkin',
 ) -> str:
     """
     Build a complete CalculiX simulation deck from a Gmsh mesh .inp file.
@@ -272,8 +278,9 @@ def build_ccx_deck(
         for p in active_loads:
             applied_loads.append((fallback_node, p['load']))
 
-    # ── Detect Web Elsets and Boundary Nodes ──
-    web_elset_names = sorted([k for k in elsets if k.startswith('Web_')])
+    # ── Detect Web and Beam Elsets and Boundary Nodes ──
+    web_elset_names = sorted([k for k in set(list(elsets.keys()) + list(elements.keys())) if k.startswith('Web_')])
+    beam_elset_names = sorted([k for k in set(list(elsets.keys()) + list(elements.keys())) if k.startswith('BEAMS_T_')])
 
     # Flatten elements dict for quick lookup by ID
     flat_elements = {}
@@ -299,11 +306,20 @@ def build_ccx_deck(
             boundary_nodes.add(edge[0])
             boundary_nodes.add(edge[1])
 
+    # For 2D beams, EVERY beam node must be tied to the skin
+    for bname in beam_elset_names:
+        eids = set(elsets.get(bname, []))
+        if bname in elements:
+            eids.update([eid for eid, _ in elements[bname]])
+        for eid in eids:
+            if eid in flat_elements:
+                boundary_nodes.update(flat_elements[eid])
+
     # Exclude root nodes to prevent SPC/MPC conflicts
     boundary_nodes.difference_update(root_nodes)
 
     # ── Match Web Boundary Nodes to Skin ──
-    skin_nodes = _get_element_nodes_for_elset('WingSkin', elements, elsets)
+    skin_nodes = _get_element_nodes_for_elset(skin_elset_name, elements, elsets)
     skin_nodes_list = list(skin_nodes)
     skin_coords = np.array([nodes[n] for n in skin_nodes_list if n in nodes])
 
@@ -412,7 +428,7 @@ def build_ccx_deck(
     lines.append('** ═══════════════════════════════════════════')
     lines.append('**')
 
-    lines.append(f'*SHELL SECTION, ELSET=WingSkin, MATERIAL={material["name"]}, '
+    lines.append(f'*SHELL SECTION, ELSET={skin_elset_name}, MATERIAL={material["name"]}, '
                  f'ORIENTATION=OR_SKIN')
     lines.append(f'{skin_thickness}')
 
@@ -426,6 +442,32 @@ def build_ccx_deck(
         lines.append(f'*SHELL SECTION, ELSET=Web_{web_idx}, MATERIAL={material["name"]}, '
                      f'ORIENTATION=OR_Web_{web_idx}')
         lines.append(f'{thick}')
+
+    # ── Beam Sections ──
+    if beam_elset_names:
+        lines.append('**')
+        lines.append('** ═══════════════════════════════════════════')
+        lines.append('** BEAM SECTIONS')
+        lines.append('** ═══════════════════════════════════════════')
+        lines.append('**')
+        for bname in beam_elset_names:
+            try:
+                # Name is like BEAMS_T_0_003000
+                thick_str = bname.replace('BEAMS_T_', '')
+                # Find where the decimal point should be based on length, or just replace last underscore
+                # Actually, in meshing.py we did f"BEAMS_T_{thick:.6f}".replace('.', '_')
+                # So if it's 0_003000, we can replace the first underscore with a dot
+                parts = thick_str.split('_')
+                if len(parts) >= 2:
+                    thick = float(parts[0] + '.' + parts[1])
+                else:
+                    thick = 0.005
+            except (ValueError, IndexError):
+                thick = 0.005
+
+            lines.append(f'*BEAM SECTION, ELSET={bname}, MATERIAL={material["name"]}, SECTION=CIRC')
+            lines.append(f'{thick / 2.0}')  # CIRC takes radius
+            lines.append('0., 0., -1.')  # Direction cosines for beam orientation (z-axis downwards)
 
     # ── MPC Equations (Web to Skin Contact) ──
     if mpc_equations:

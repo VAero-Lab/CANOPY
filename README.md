@@ -30,9 +30,9 @@ pip install gmsh  # Required for FEM meshing
 The aerodynamic features require a standard Julia installation. **No modifications are made to any external Julia libraries.** You can install the required official packages directly:
 
 ```bash
-julia -e 'using Pkg; Pkg.add(["FLOWPanel", "JSON"])'
+julia -e 'using Pkg; Pkg.add(["FLOWPanel", "VortexLattice", "WriteVTK", "JSON", "StaticArrays"])'
 ```
-*(This will automatically download and install `FLOWPanel.jl` and `JSON.jl` in your default global environment or your active project environment.)*
+*(This will automatically download and install `FLOWPanel.jl`, `VortexLattice.jl`, and standard IO packages in your default global environment or your active project environment.)*
 
 ## Quick Start
 
@@ -128,6 +128,24 @@ The `examples/` directory contains demonstration scripts covering core capabilit
 - `ex08_fem_organic.py`: End-to-end FEM simulation for a dense, spanwise-zoned organic fractal structure with multiple distributed point loads.
 - `ex09_aero_loads.py`: Full end-to-end multi-disciplinary design and analysis (MDA) loop coupling planform generation, CAD STEP export, Gmsh meshing, FLOWPanel.jl 3D aerodynamic panel solve, IDW load transfer with resultant conservation checks, and clamped CalculiX structural static analysis solve.
 - `ex10_aero_mesh_dependency.py`: Aerodynamic mesh dependency study showing grid convergence of Lift and Drag coefficients as the chordwise and spanwise panel densities are systematically refined.
+- `ex11_2d_flapping_wing.py`: Full aero-structural analysis of a 2D wing with flapping kinematics using a custom VortexLattice.jl aerodynamic solver, 1D beam discretization for internal webs, and multi-point tie constraint FEM coupling.
+
+## ParaView Visualization & Post-Processing
+
+To overcome standard limitations with mixed-element meshes and wireframe rendering in ParaView, the solver automatically post-processes results into specialized formats:
+
+### 1. Solid-Surface Aerodynamic Load Visualization (`_panels.vtu`)
+Instead of displaying bound vortex filaments as colored wireframe edges (the default VortexLattice.jl behavior), the solver generates a dedicated `<vtk_prefix>_panels.vtu` mesh:
+- Combines grid coordinates into solid 2D `VTK_QUAD` cells.
+- Binds aerodynamic variables (`circulation`, `force_magnitude`, `force_x`, `force_y`, `force_z`) as **cell-centered data**.
+- **ParaView Usage**: Open the file, change the **Representation** from *Outline* to **Surface**, and choose the desired color variable to view a smooth, continuous load distribution.
+
+### 2. Isolated Beam and Skin Post-Processing (`_beams_1d.vtu` and `_skin_2d.vtu`)
+Because CalculiX outputs a single mixed-type mesh, standard ParaView filters (like the **Tube** filter for beam members) are disabled. The solver automatically splits the output `.vtu` file:
+- **`*_beams_1d.vtu`**: Isolates all 1D beam elements (`B31`/`B32`) as standard 1D lines, preserving simulation results (`U`, `S`, `S_Mises`).
+  - **ParaView Usage**: Load this file, select it, apply the **Tube** filter, and adjust the radius to visualize the actual circular bars.
+- **`*_skin_2d.vtu`**: Isolates all 2D shell elements (`S3`/`S4`) as standard 2D flat surfaces.
+- **`*_skin.vtu`**: Contains the 3D-extruded volumetric representations of the skin elements.
 
 ## License
 

@@ -2,8 +2,7 @@
 examples/output/
 examples/output_fem/
 examples/output_fem_aero/
-examples/output_cad/
-examples/output_crossing/
+examples/output_2d_flapping/
 
 # Python cache and build artifacts
 __pycache__/
@@ -15,3 +14,7 @@ build/
 
 # Julia precompilation cache
 Manifest.toml
+
+# Temporary VLM data files
+aero_input.json
+aero_loads.json

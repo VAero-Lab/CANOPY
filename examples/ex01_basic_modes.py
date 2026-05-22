@@ -8,7 +8,7 @@ import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import fractal_wing as fw
+import frond as fw
 from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output')

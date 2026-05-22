@@ -10,7 +10,7 @@ non-conformal multi-point constraint (glue) FEM meshing.
 """
 
 import os
-import fractal_wing as fw
+import frond as fw
 from aeroshape.nurbs.export import NurbsExporter
 from utils import get_base_wing
 

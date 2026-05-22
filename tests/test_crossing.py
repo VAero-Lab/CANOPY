@@ -10,8 +10,8 @@ Verifies that:
 import unittest
 import numpy as np
 
-from fractal_wing.structures import Seg, SubParams, BranchDef, Station, TrunkSpec, segments_cross
-from fractal_wing.generator import TreeGenerator
+from frond.structures import Seg, SubParams, BranchDef, Station, TrunkSpec, segments_cross
+from frond.generator import TreeGenerator
 
 
 class MockWingAdapter:

@@ -1,4 +1,4 @@
-import fractal_wing as fw
+import frond as fw
 from aeroshape.geometry.wings import MultiSegmentWing, SegmentSpec
 from aeroshape.geometry.airfoils import AirfoilProfile
 

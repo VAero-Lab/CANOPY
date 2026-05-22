@@ -20,12 +20,14 @@ The following versions are checked and pinned in the `Manifest.toml` of the proj
 ## 2. Dynamic Library Isolation (`LD_LIBRARY_PATH` Issue)
 
 ### The Problem
-When running Julia from a Python subprocess (especially within a Conda or Pyenv environment), the process inherits the environment variables of the active Python kernel. 
+
+When running Julia from a Python subprocess (especially within a Conda or Pyenv environment), the process inherits the environment variables of the active Python kernel.
 
 Python environments often prepend virtual-env-specific paths to `LD_LIBRARY_PATH` (e.g. `/home/user/.pyenv/versions/.../lib`). When Julia attempts to precompile or load packages that depend on low-level binary wrappers (such as `LibCURL_jll`, `LibSSH2_jll`, `nghttp2_jll`), it links against Python's shared libraries instead of Julia's internal ones. This results in missing symbol mismatches, precompilation failures, and segmentation faults (`SIGSEGV: 11`).
 
 ### The Solution (Non-Intrusive)
-In the Python aerodynamic solver wrapper (`src/fractal_wing/aero_solver.py`), we explicitly isolate the subprocess environment by copying the parent environment and clearing `LD_LIBRARY_PATH`:
+
+In the Python aerodynamic solver wrapper (`src/frond/aero_solver.py`), we explicitly isolate the subprocess environment by copying the parent environment and clearing `LD_LIBRARY_PATH`:
 
 ```python
 import os
@@ -43,7 +45,9 @@ subprocess.run(["julia", "--project", "script.jl"], env=env, check=True)
 ## 3. VortexLattice.jl (v0.2.3) Control Point Memory Bug
 
 ### The Problem
+
 When executing VortexLattice's VLM grid panel solver, the analysis would randomly crash with:
+
 - `SingularException(0)` (LAPACK factorization failure)
 - `SIGSEGV: 11` (segmentation fault inside the linear system solve)
 
@@ -59,12 +63,13 @@ for i = 1:nsurf
 end
 ```
 
-Because `Array{TF}(undef, ...)` allocates memory without zeroing it out, the arrays contain arbitrary garbage data left over from previous processes. Adding `.+ [0.5; 0.75]` to garbage memory propagates `NaN`, `Inf`, or extreme floating-point garbage to the control points. 
+Because `Array{TF}(undef, ...)` allocates memory without zeroing it out, the arrays contain arbitrary garbage data left over from previous processes. Adding `.+ [0.5; 0.75]` to garbage memory propagates `NaN`, `Inf`, or extreme floating-point garbage to the control points.
 
 When these control points are used to evaluate the influence coefficients of the grid panels, the resulting aerodynamic influence coefficient (AIC) matrix gets populated with `NaN`s, causing the linear solver to collapse.
 
 ### The Bypass (Implemented in our Wrapper)
-Rather than forcing users to modify their global Julia package directories, we bypass the bug in `src/fractal_wing/solve_vortexlattice.jl` by manually resetting the ratios array to the correct defaults immediately after instantiation:
+
+Rather than forcing users to modify their global Julia package directories, we bypass the bug in `src/frond/solve_vortexlattice.jl` by manually resetting the ratios array to the correct defaults immediately after instantiation:
 
 ```julia
 # solve_vortexlattice.jl (Bypass logic)
@@ -87,60 +92,33 @@ steady_analysis!(system, ref, fs; derivatives=false)
 
 ---
 
-## 4. Contributing the Fix Upstream (GitHub Pull Request)
-
-To submit a fix directly to the upstream repository [byuflowlab/VortexLattice.jl](https://github.com/byuflowlab/VortexLattice.jl):
-
-### Proposed Upstream Fix
-The allocation must be changed to zero-initialized memory (`zeros` or `fill`):
-
-```diff
-- ratios = [Array{TF}(undef, 2, nc[i], ns[i]) for i = 1:nsurf]
-+ ratios = [zeros(TF, 2, nc[i], ns[i]) for i = 1:nsurf]
-  for i = 1:nsurf
-      ratios[i] = ratios[i] .+ [0.5; 0.75]
-  end
-```
-
-### Steps to Submit the Pull Request
-1. Fork the `byuflowlab/VortexLattice.jl` repository on GitHub.
-2. Clone your fork locally:
-   ```bash
-   git clone https://github.com/<your-username>/VortexLattice.jl.git
-   cd VortexLattice.jl
-   ```
-3. Edit `src/system.jl` to replace `Array{TF}(undef, ...)` with `zeros(TF, ...)` as shown in the diff above.
-4. Commit the changes and push to your fork:
-   ```bash
-   git checkout -b fix-uninitialized-ratios
-   git add src/system.jl
-   git commit -m "Fix SingularException/SIGSEGV caused by uninitialized control point ratios"
-   git push origin fix-uninitialized-ratios
-   ```
-5. Open a Pull Request from your branch to `byuflowlab/VortexLattice.jl:master`.
-
----
-
-## 5. Replication & Setup Commands
+## 4. Replication & Setup Commands
 
 Anyone cloning and using this package should follow these steps to run the pipeline:
 
 ### Step 1: Install Julia 1.10
+
 Download and install Julia 1.10 LTS from [julialang.org](https://julialang.org/downloads/). If you use `juliaup`:
+
 ```bash
 juliaup add 1.10
 juliaup default 1.10
 ```
 
 ### Step 2: Instantiate the Julia Environment
+
 Ensure your terminal environment has `LD_LIBRARY_PATH` cleared when instantiating the packages:
+
 ```bash
 LD_LIBRARY_PATH="" julia --project="." -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 ```
 
 ### Step 3: Run the Examples
+
 Run Example 11 to verify the steady aerodynamic and structural analysis pipeline:
+
 ```bash
 python3 examples/ex11_2d_flapping_wing.py
 ```
+
 This script runs the VLM code, maps the forces, calls CalculiX, and exports `vlm_aero.vtm` and `wing_skin_sim.vtu` to `examples/output_2d_flapping/`.

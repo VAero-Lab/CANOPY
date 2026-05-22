@@ -5,10 +5,10 @@ import numpy as np
 # Add src to path for running directly
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-import fractal_wing as fw
-from fractal_wing.meshing import GmshMesher2D, append_1d_beams
-from fractal_wing.aero_solver import run_vlm_analysis, map_aerodynamic_loads
-from fractal_wing.fem_solver import parse_mesh_for_mapping, build_ccx_deck
+import frond as fw
+from frond.meshing import GmshMesher2D, append_1d_beams
+from frond.aero_solver import run_vlm_analysis, map_aerodynamic_loads
+from frond.fem_solver import parse_mesh_for_mapping, build_ccx_deck
 from utils import get_base_wing
 
 OUT = 'examples/output_2d_flapping'
@@ -115,7 +115,7 @@ def main():
         print("  FEM solve complete. Converting results to VTK...")
         subprocess.run(["ccx2paraview", "wing_skin_sim.frd", "vtu"], check=True, capture_output=True, text=True)
         print("  Converted to VTU successfully.")
-        from fractal_wing.run_utils import split_vtu_file
+        from frond.run_utils import split_vtu_file
         split_vtu_file("wing_skin_sim.vtu")
     except subprocess.CalledProcessError as e:
         print(f"  Warning: Could not run FEM or ccx2paraview. Command {e.cmd} returned non-zero exit status {e.returncode}.")

@@ -6,7 +6,7 @@ fractal structure with multiple tip loads.
 """
 
 import os
-import fractal_wing as fw
+import frond as fw
 import matplotlib.pyplot as plt
 from utils import get_base_wing
 

@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fractal-wing"
+name = "frond"
 version = "0.2.0"
 description = "Fractal tree-branch wing structure generator with integrated 3D aerodynamic analysis for structural optimization"
 readme = "README.md"

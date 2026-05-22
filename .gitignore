@@ -1,5 +1,7 @@
 # FEM / Aero outputs (generated at runtime)
 examples/output/
+examples/output_cad/
+examples/output_crossing/
 examples/output_fem/
 examples/output_fem_aero/
 examples/output_2d_flapping/

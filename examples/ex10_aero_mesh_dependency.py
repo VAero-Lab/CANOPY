@@ -9,7 +9,7 @@ of total Lift and Drag forces.
 import os
 import time
 import numpy as np
-import fractal_wing as fw
+import frond as fw
 from utils import get_base_wing
 
 def main():

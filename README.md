@@ -37,7 +37,7 @@ julia -e 'using Pkg; Pkg.add(["FLOWPanel", "VortexLattice", "WriteVTK", "JSON", 
 ## Quick Start
 
 ```python
-import fractal_wing as fw
+import frond as fw
 from aeroshape.geometry.wings import MultiSegmentWing
 
 # 1. Provide an AeroShape MultiSegmentWing

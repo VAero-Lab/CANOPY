@@ -5,8 +5,8 @@ import unittest
 from unittest.mock import patch, MagicMock
 import numpy as np
 
-from fractal_wing.aero_solver import run_aerodynamic_analysis, map_aerodynamic_loads
-from fractal_wing.fem_solver import parse_mesh_for_mapping, build_ccx_deck
+from frond.aero_solver import run_aerodynamic_analysis, map_aerodynamic_loads
+from frond.fem_solver import parse_mesh_for_mapping, build_ccx_deck
 
 
 class TestAeroSolver(unittest.TestCase):

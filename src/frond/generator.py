@@ -25,7 +25,7 @@ class TreeGenerator:
 
     Parameters
     ----------
-    aerowing : AeroWingAdapter
+    wing : AeroWingAdapter
         Wing geometry that defines the structural domain.
     """
 

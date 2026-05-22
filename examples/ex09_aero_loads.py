@@ -7,7 +7,7 @@ a CalculiX static structural analysis with the mapped aerodynamic loads.
 """
 
 import os
-import fractal_wing as fw
+import frond as fw
 from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output_fem_aero')

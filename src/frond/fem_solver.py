@@ -539,8 +539,11 @@ def build_ccx_deck(
     print(f'  -> CalculiX simulation deck written: {output_path}')
     print(f'     Root nodes (clamped): {len(root_nodes)}')
     print(f'     Tip nodes: {len(tip_nodes)}')
-    for n_id, load_val in applied_loads:
-        print(f'     Tip load node: {n_id} ({load_val} N in Z)')
+    if mapped_aero_forces is not None:
+        print(f'     Mapped aero loads applied: {len(mapped_aero_forces)} nodes')
+    else:
+        for n_id, load_val in applied_loads:
+            print(f'     Tip load node: {n_id} ({load_val} N in Z)')
     print(f'     Web-to-Skin MPCs: {len(mpc_equations)}')
     print(f'     Web orientations defined: {len(web_orientations)}')
 

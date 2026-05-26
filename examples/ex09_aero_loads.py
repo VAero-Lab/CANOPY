@@ -106,12 +106,14 @@ def main():
         mesh_inp=inp_path,
         web_properties=props,
         segments=segs,
-        skin_thickness=0.003, # 3mm carbon skin
+        skin_thickness=0.001, # 1mm carbon skin (reduced for more visible deformation)
         mapped_aero_forces=mapped_forces
     )
 
     # 7. Run CalculiX FEM solver
     print('\n7. Solving structural analysis (CalculiX)...')
+    # NOTE: To visualize the deformation clearly in ParaView, apply the "Warp By Vector" 
+    # filter and increase the scale factor, as 1mm CFRP is still very stiff.
     ccx_results = fw.run_ccx(sim_path, convert_vtu=True)
     
     print('\n' + '='*70)

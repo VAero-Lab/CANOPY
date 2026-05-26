@@ -339,7 +339,25 @@ def split_vtu_file(vtu_path: str):
                 writer.SetInputData(polydata)
                 writer.Write()
                 print(f"  -> Generated 1D beam PolyData mesh (for Tube filter): {beam_vtp_path}")
-                generated_files["Beams"] = f"{base_name}_beams.vtp"
+
+                # Apply Tube filter to create visible 3D cylinders
+                polydata.GetPointData().SetActiveScalars("TubeRadius")
+                tube_filter = vtk.vtkTubeFilter()
+                tube_filter.SetInputData(polydata)
+                tube_filter.SetVaryRadiusToVaryRadiusByAbsoluteScalar()
+                tube_filter.SetNumberOfSides(12)
+                tube_filter.Update()
+                tubed = tube_filter.GetOutput()
+
+                tubed_writer = vtk.vtkXMLPolyDataWriter()
+                tubed_path = os.path.join(base_dir, f"{base_name}_beams_tubed.vtp")
+                tubed_writer.SetFileName(tubed_path)
+                tubed_writer.SetInputData(tubed)
+                tubed_writer.Write()
+                print(f"  -> Generated 3D tubed beam mesh: {tubed_path}")
+
+                # Use the tubed version in the combined file so beams are visible
+                generated_files["Beams"] = f"{base_name}_beams_tubed.vtp"
             except ImportError:
                 print("  -> Warning: 'vtk' module not installed. Cannot export VTP beams mesh.")
 

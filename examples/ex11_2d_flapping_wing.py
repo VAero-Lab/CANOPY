@@ -20,43 +20,53 @@ def main():
     print("=================================================================")
 
     # 1. Geometry and Adapter
-    _, wing = get_base_wing(bm='full_wing')
+    from aeroshape.geometry.wings import MultiSegmentWing, SegmentSpec
+    from aeroshape.geometry.airfoils import AirfoilProfile
+
+    # Define a biologically-scaled wing (e.g. 0.4m span, 15cm root chord)
+    spec = SegmentSpec(
+        span=0.15,
+        root_chord=0.075,
+        tip_chord=0.0375,
+        sweep_le_deg=0,
+        root_airfoil=AirfoilProfile.from_naca4("0012"),
+        num_sections=20
+    )
+    aero_wing = MultiSegmentWing().add_segment(spec)
+    wing = fw.AeroWingAdapter(aero_wing, bm='full_wing')
     
     # 2. Fractal Structure Generation (Multi-Trunk)
-    sub_mt = fw.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.02)
+    sub_mt = fw.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.005)
     specs = [
         fw.TrunkSpec(
-            chord_frac=0.25, span_cov=1.0, thick=0.005,
+            chord_frac=0.25, span_cov=1.0, thick=0.002,
             stations=fw.make_mixed_stations(
-                n_stations=12, diag_angle=40, chord_angle=70,
-                diag_length=2.5, chord_length=2.0,
-                diag_sub=fw.SubParams(max_depth=3, mode='sympodial', min_length=0.02),
+                n_stations=8, diag_angle=40, chord_angle=70,
+                diag_length=0.08, chord_length=0.05,
+                diag_sub=fw.SubParams(max_depth=3, mode='sympodial', min_length=0.005),
                 chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
             ),
             allow_crossing=False,
             protect_trunk=True,
         ),
         fw.TrunkSpec(
-            chord_frac=0.75, span_cov=1.0, thick=0.005,
+            chord_frac=0.75, span_cov=1.0, thick=0.002,
             stations=fw.make_mixed_stations(
-                n_stations=12, diag_angle=-40, chord_angle=-70,
-                diag_length=2.5, chord_length=2.0,
-                diag_sub=fw.SubParams(max_depth=2, mode='sympodial', min_length=0.02),
+                n_stations=8, diag_angle=-40, chord_angle=-70,
+                diag_length=0.08, chord_length=0.05,
+                diag_sub=fw.SubParams(max_depth=2, mode='sympodial', min_length=0.005),
                 chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
             ),
             allow_crossing=False,
-            protect_trunk=False,
-        ),
+            protect_trunk=True,
+        )
     ]
-
-    print("Generating fractal structure...")
     gen = fw.TreeGenerator(wing)
     segs = gen.generate_multi(specs)
     print(f"  Generated {len(segs)} segments.")
 
-    # 3. Meshing (2D Skin + 1D Beams)
     print("\nMeshing...")
-    mesher = GmshMesher2D(target_elem_size=0.2)
+    mesher = GmshMesher2D(target_elem_size=0.01) # scaled down element size
     skin_inp = os.path.join(OUT, 'wing_skin.inp')
     
     # 3.1. Flat 2D skin mesh
@@ -65,13 +75,13 @@ def main():
 
     # 3.2. Discretize 1D beams and append to INP
     print("  Discretizing fractal segments into 1D B31 beams...")
-    elem_groups = append_1d_beams(segs, target_size=0.2, inp_path=skin_inp)
+    elem_groups = append_1d_beams(segs, target_size=0.01, inp_path=skin_inp)
 
     # 4. Aerodynamics (VortexLattice.jl VLM)
     print("\nRunning VLM Aerodynamics...")
-    aoa = 5.0
-    V = 20.0
-    density = 1.0
+    aoa = 3.0
+    V = 10.0
+    density = 0.95
     aero_data = run_vlm_analysis(wing, aoa=aoa, magVinf=V, rho=density, num_x=30, num_y=60, save_vtk=True)
     
     # 5. Load Mapping
@@ -89,11 +99,24 @@ def main():
 
     # 6. FEM Deck Build (CalculiX)
     print("\nBuilding CalculiX Simulation Deck...")
-    # For a flapping wing membrane, we use a very thin shell (e.g. 0.05mm)
-    skin_thickness = 5e-5 
+    skin_thickness = 1e-3  # 1mm (prevents numerical instability in linear solver)
+    pla = {
+    "name": "PLA",
+    "E1": 3.5e9,    # Pa
+    "E2": 3.5e9,
+    "E3": 3.5e9,
+    "nu12": 0.36,
+    "nu13": 0.36,
+    "nu23": 0.36,
+    "G12": 1.29e9,  # E / (2*(1+nu))
+    "G13": 1.29e9,
+    "G23": 1.29e9,
+    "density": 1240.0,  # kg/m^3
+    }
     
     sim_inp = build_ccx_deck(
         mesh_inp=skin_inp,
+        material=pla,
         web_properties={}, # Not used for beams
         segments=segs,     # Not heavily used for B31 orientation, handled differently
         skin_thickness=skin_thickness,

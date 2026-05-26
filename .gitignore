@@ -5,6 +5,7 @@ examples/output_crossing/
 examples/output_fem/
 examples/output_fem_aero/
 examples/output_2d_flapping/
+examples/3D_wing_Opt/
 
 # Python cache and build artifacts
 __pycache__/

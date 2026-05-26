@@ -88,7 +88,13 @@ def build_brep_webs(segs: List[Seg], aerowing,
         # Boolean Intersect with Wing OML!
         # This automatically trims the top and bottom to match NURBS curvature
         # perfectly.
-        trimmed_web = web_shape.intersect(wing_shape)
+        try:
+            trimmed_web = web_shape.intersect(wing_shape)
+        except Exception:
+            trimmed_web = None
+
+        if trimmed_web is None:
+            continue
 
         # FIX: Avoid degenerate 3-edged webs at the trailing edge
         if not as_solid and trimmed_web.is_valid and len(
@@ -109,10 +115,13 @@ def build_brep_webs(segs: List[Seg], aerowing,
                 z_dir=dir_z)
             new_web_face = Face.make_rect(
                 new_length, 2 * Z_INF, plane=new_workplane)
-            trimmed_web = new_web_face.intersect(wing_shape)
+            try:
+                trimmed_web = new_web_face.intersect(wing_shape)
+            except Exception:
+                trimmed_web = None
 
         # Verify it successfully intersected
-        if trimmed_web.is_valid:
+        if trimmed_web is not None and trimmed_web.is_valid:
             webs.append(trimmed_web)
             properties[len(webs) -
                        1] = {"thickness": seg.thick, "level": seg.level, "id": i}

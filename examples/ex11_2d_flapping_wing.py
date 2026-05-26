@@ -25,10 +25,10 @@ def main():
 
     # Define a biologically-scaled wing (e.g. 0.4m span, 15cm root chord)
     spec = SegmentSpec(
-        span=0.15,
-        root_chord=0.075,
-        tip_chord=0.0375,
-        sweep_le_deg=0,
+        span=0.05,
+        root_chord=0.05,
+        tip_chord=0.040,
+        sweep_le_deg=10,
         root_airfoil=AirfoilProfile.from_naca4("0012"),
         num_sections=20
     )
@@ -39,7 +39,7 @@ def main():
     sub_mt = fw.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.005)
     specs = [
         fw.TrunkSpec(
-            chord_frac=0.25, span_cov=1.0, thick=0.002,
+            chord_frac=0.25, span_cov=1.0, thick=0.0006,
             stations=fw.make_mixed_stations(
                 n_stations=8, diag_angle=40, chord_angle=70,
                 diag_length=0.08, chord_length=0.05,
@@ -50,7 +50,7 @@ def main():
             protect_trunk=True,
         ),
         fw.TrunkSpec(
-            chord_frac=0.75, span_cov=1.0, thick=0.002,
+            chord_frac=0.75, span_cov=1.0, thick=0.0006,
             stations=fw.make_mixed_stations(
                 n_stations=8, diag_angle=-40, chord_angle=-70,
                 diag_length=0.08, chord_length=0.05,
@@ -66,7 +66,7 @@ def main():
     print(f"  Generated {len(segs)} segments.")
 
     print("\nMeshing...")
-    mesher = GmshMesher2D(target_elem_size=0.01) # scaled down element size
+    mesher = GmshMesher2D(target_elem_size=0.0025) # scaled down element size
     skin_inp = os.path.join(OUT, 'wing_skin.inp')
     
     # 3.1. Flat 2D skin mesh
@@ -75,14 +75,14 @@ def main():
 
     # 3.2. Discretize 1D beams and append to INP
     print("  Discretizing fractal segments into 1D B31 beams...")
-    elem_groups = append_1d_beams(segs, target_size=0.01, inp_path=skin_inp)
+    elem_groups = append_1d_beams(segs, target_size=0.0075, inp_path=skin_inp)
 
     # 4. Aerodynamics (VortexLattice.jl VLM)
     print("\nRunning VLM Aerodynamics...")
     aoa = 3.0
     V = 10.0
     density = 0.95
-    aero_data = run_vlm_analysis(wing, aoa=aoa, magVinf=V, rho=density, num_x=30, num_y=60, save_vtk=True)
+    aero_data = run_vlm_analysis(wing, aoa=aoa, magVinf=V, rho=density, num_x=40, num_y=80, save_vtk=True)
     
     # 5. Load Mapping
     print("\nMapping Aerodynamic Loads to Skin Mesh...")
@@ -99,7 +99,7 @@ def main():
 
     # 6. FEM Deck Build (CalculiX)
     print("\nBuilding CalculiX Simulation Deck...")
-    skin_thickness = 1e-3  # 1mm (prevents numerical instability in linear solver)
+    skin_thickness = 1e-4  # 1mm (prevents numerical instability in linear solver)
     pla = {
     "name": "PLA",
     "E1": 3.5e9,    # Pa
@@ -122,7 +122,11 @@ def main():
         skin_thickness=skin_thickness,
         mapped_aero_forces=mapped_forces,
         binary_output=False,
-        skin_elset_name="SKIN_2D"
+        skin_elset_name="SKIN_2D",
+        beam_section="CIRC",
+        beam_wall_thickness_ratio=0.2,
+        nlgeom=False,
+        isotropic=True,
     )
     print(f"  Simulation deck ready: {sim_inp}")
 

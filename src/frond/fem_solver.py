@@ -187,6 +187,10 @@ def build_ccx_deck(
     binary_output: bool = False,
     mapped_aero_forces: Dict[int, np.ndarray] = None,
     skin_elset_name: str = 'WingSkin',
+    beam_section: str = 'CIRC',
+    beam_wall_thickness_ratio: float = 0.2,
+    nlgeom: bool = False,
+    isotropic: bool = None,
 ) -> str:
     """
     Build a complete CalculiX simulation deck from a Gmsh mesh .inp file.
@@ -360,6 +364,8 @@ def build_ccx_deck(
     # Read the original mesh content
     with open(mesh_inp, 'r') as f:
         mesh_content = f.read()
+    if beam_section.upper() == 'PIPE':
+        mesh_content = mesh_content.replace('TYPE=B32,', 'TYPE=B32R,').replace('type=B32,', 'type=B32R,')
     lines.append(mesh_content.rstrip())
     lines.append('')
 
@@ -394,11 +400,28 @@ def build_ccx_deck(
     lines.append('** ═══════════════════════════════════════════')
     lines.append('**')
     lines.append(f'*MATERIAL, NAME={material["name"]}')
-    lines.append('*ELASTIC, TYPE=ENGINEERING CONSTANTS')
-    lines.append(f'{material["E1"]}, {material["E2"]}, {material["E3"]}, '
-                 f'{material["nu12"]}, {material["nu13"]}, {material["nu23"]}, '
-                 f'{material["G12"]}, {material["G13"]},')
-    lines.append(f'{material["G23"]}')
+    is_iso = False
+    if isotropic is True:
+        is_iso = True
+    elif isotropic is None:
+        if "E" in material and "nu" in material:
+            is_iso = True
+        elif all(k in material for k in ["E1", "E2", "E3", "nu12"]):
+            # Auto-detect if all E are equal
+            if abs(material["E1"] - material["E2"]) < 1e-6 and abs(material["E2"] - material["E3"]) < 1e-6:
+                is_iso = True
+
+    if is_iso:
+        E_val = material.get("E", material.get("E1"))
+        nu_val = material.get("nu", material.get("nu12"))
+        lines.append('*ELASTIC')
+        lines.append(f'{E_val}, {nu_val}')
+    else:
+        lines.append('*ELASTIC, TYPE=ENGINEERING CONSTANTS')
+        lines.append(f'{material["E1"]}, {material["E2"]}, {material["E3"]}, '
+                     f'{material["nu12"]}, {material["nu13"]}, {material["nu23"]}, '
+                     f'{material["G12"]}, {material["G13"]},')
+        lines.append(f'{material["G23"]}')
     lines.append('*DENSITY')
     lines.append(f'{material["density"]}')
 
@@ -465,8 +488,14 @@ def build_ccx_deck(
             except (ValueError, IndexError):
                 thick = 0.005
 
-            lines.append(f'*BEAM SECTION, ELSET={bname}, MATERIAL={material["name"]}, SECTION=CIRC')
-            lines.append(f'{thick / 2.0}')  # CIRC takes radius
+            if beam_section.upper() == 'PIPE':
+                r_outer = thick / 2.0
+                t_wall = beam_wall_thickness_ratio * r_outer
+                lines.append(f'*BEAM SECTION, ELSET={bname}, MATERIAL={material["name"]}, SECTION={beam_section.upper()}')
+                lines.append(f'{r_outer:.8e}, {t_wall:.8e}')
+            else:
+                lines.append(f'*BEAM SECTION, ELSET={bname}, MATERIAL={material["name"]}, SECTION=CIRC')
+                lines.append(f'{thick / 2.0:.8e}')
             lines.append('0., 0., -1.')  # Direction cosines for beam orientation (z-axis downwards)
 
     # ── MPC Equations (Web to Skin Contact) ──
@@ -489,7 +518,11 @@ def build_ccx_deck(
     lines.append('** ═══════════════════════════════════════════')
     lines.append('**')
 
-    lines.append('*STEP')
+    if nlgeom:
+        lines.append('*STEP, NLGEOM')
+    else:
+        lines.append('*STEP')
+
     if solver:
         lines.append(f'*STATIC, SOLVER={solver.upper()}')
     else:

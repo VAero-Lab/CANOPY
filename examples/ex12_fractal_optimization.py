@@ -136,16 +136,15 @@ def main():
         mode="uncoupled",
         mapped_loads_dict=mapped_forces,
         save_every_n_iterations=5,      # Save files every 5 iterations (plus initial/final)
-        target_volume_fraction=0.30,   # Max 30% envelope volume fraction
         skin_thickness=0.003,          # 3mm skin thickness
     )
 
-    # ── 5. Run Verification Optimization (Limit to 2 iterations) ──
-    print("\n5. Running verification iterations (method='SLSQP', max_iter=2)...")
+    # ── 5. Run Verification Optimization (35 COBYLA evaluations) ──
+    print("\n5. Running verification iterations (method='COBYLA', max_iter=35)...")
     print("-" * 75)
     
-    # Run the SLSQP solver for 2 test iterations to check execution convergence
-    results = optimizer.optimize(method="slsqp", max_iter=2)
+    # Run the COBYLA solver for 35 test iterations to check execution convergence
+    results = optimizer.optimize(method="cobyla", max_iter=35)
     
     print("-" * 75)
     print("Verification iterations completed successfully!")

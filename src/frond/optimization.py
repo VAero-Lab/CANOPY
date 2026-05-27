@@ -38,6 +38,28 @@ def SilenceOutput():
             os.close(fd)
 
 
+@contextmanager
+def SilenceAndCaptureOutput(log_file_path: str):
+    """
+    Context manager to redirect stdout and stderr at the file descriptor level
+    to a log file. Keeps the console completely silent while capturing all solver prints,
+    warnings, and messages.
+    """
+    log_fd = os.open(log_file_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
+    save_fds = [os.dup(1), os.dup(2)]
+    try:
+        os.dup2(log_fd, 1)
+        os.dup2(log_fd, 2)
+        yield
+    finally:
+        os.dup2(save_fds[0], 1)
+        os.dup2(save_fds[1], 2)
+        os.close(log_fd)
+        for fd in save_fds:
+            os.close(fd)
+
+
+
 def parse_ccx_dat_displacements(dat_path: str) -> dict[int, list[float]]:
     """
     Parses node displacements from the CalculiX .dat file.
@@ -82,8 +104,11 @@ def parse_ccx_dat_displacements(dat_path: str) -> dict[int, list[float]]:
 
 def parse_ccx_dat_stresses(dat_path: str) -> dict[int, float]:
     """
-    Parses Von Mises stresses (or stress components) from the CalculiX .dat file
-    to evaluate stress constraints.
+    Parses Von Mises stresses from the CalculiX .dat file.
+
+    The .dat stress block has the format (per element, per integration point):
+        elem_id  integ_pt  sxx  syy  szz  sxy  sxz  syz  ELSET_NAME
+    We compute Von Mises from the 6 stress components in columns [2:8].
     """
     stresses = {}
     if not os.path.isfile(dat_path):
@@ -105,11 +130,20 @@ def parse_ccx_dat_stresses(dat_path: str) -> dict[int, float]:
             continue
         if in_stresses:
             parts = stripped.split()
-            if len(parts) >= 2:
+            # Expect: elem_id  integ_pt  sxx syy szz sxy sxz syz  [elset_name]
+            if len(parts) >= 8:
                 try:
                     elem_id = int(parts[0])
-                    val = float(parts[-1])
-                    stresses[elem_id] = max(stresses.get(elem_id, 0.0), val)
+                    sxx = float(parts[2])
+                    syy = float(parts[3])
+                    szz = float(parts[4])
+                    sxy = float(parts[5])
+                    sxz = float(parts[6])
+                    syz = float(parts[7])
+                    # Von Mises stress
+                    vm = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2
+                                        + 6.0 * (sxy**2 + sxz**2 + syz**2)))
+                    stresses[elem_id] = max(stresses.get(elem_id, 0.0), vm)
                 except ValueError:
                     pass
     return stresses
@@ -331,15 +365,19 @@ class AeroStructuralOptimizer:
 
         self.mapper = FractalParameterMapper(baseline_zones)
         self.history_csv = os.path.join(output_dir, "opt_history.csv")
+        self.log_file = os.path.join(output_dir, "opt_solver_messages.log")
         self.iter_count = 0
 
-        # Smart caching layer to prevent double solves
-        self._cached_x = None
-        self._cached_compliance = None
-        self._cached_constraints = None
+        # Initialize messages log file
+        import datetime
+        os.makedirs(output_dir, exist_ok=True)
+        with open(self.log_file, "w") as f_log:
+            f_log.write("==================================================\n")
+            f_log.write(f"  AeroStructural Optimization Diagnostic Log\n")
+            f_log.write(f"  Started: {datetime.datetime.now().isoformat()}\n")
+            f_log.write("==================================================\n\n")
 
         # Initialize history log
-        os.makedirs(output_dir, exist_ok=True)
         with open(self.history_csv, "w", newline="") as f:
             writer = csv.writer(f)
             header = ["Iteration", "Compliance", "WebVolume", "VolFraction", "MaxStress", "ElapsedTime"]
@@ -347,11 +385,40 @@ class AeroStructuralOptimizer:
                 header.append(f"x_{i}")
             writer.writerow(header)
 
-        # Baseline volume estimate for target constraint V_max = 25% of ref volume
-        ref_chord = 1.0
-        ref_span = 7.5
-        ref_thick = 0.2
-        self.max_allowable_volume = ref_chord * ref_span * ref_thick * target_volume_fraction
+        # Pre-calculate baseline volume dynamically
+        print("  [Optimizer] Pre-calculating baseline web volume and structural behavior...")
+        self._last_web_vol = 0.0
+        self._cached_x = None
+        self._cached_compliance = None
+        self._cached_constraints = None
+
+        comp_base, constr_base = self._solve_iteration(self.mapper.get_baseline_vector())
+        self.baseline_web_volume = self._last_web_vol
+        print(f"  [Optimizer] Baseline web volume computed: {self.baseline_web_volume * 1e6:.1f} cm3")
+
+        # Reset iter_count and cached states so optimization loop starts clean from Iteration 1
+        self.iter_count = 0
+        self._cached_x = None
+        self._cached_compliance = None
+        self._cached_constraints = None
+
+        # Estimate total wing envelope volume dynamically
+        envelope_vol = 0.0
+        if hasattr(self.aero_wing, "segments"):
+            for seg in self.aero_wing.segments:
+                seg_span = getattr(seg, "span", 7.5)
+                half_span = seg_span / 2.0
+                root_c = getattr(seg, "root_chord", 1.0)
+                tip_c = getattr(seg, "tip_chord", 1.0)
+                avg_c = 0.5 * (root_c + tip_c)
+                avg_t = avg_c * 0.12
+                envelope_vol += half_span * avg_c * avg_t
+
+        if envelope_vol < 1e-3:
+            envelope_vol = 1.0 * 7.5 * 0.2
+
+        # Max allowable volume is exactly target_volume_fraction of the wing envelope volume!
+        self.max_allowable_volume = envelope_vol * target_volume_fraction
 
         if self.mode == "uncoupled" and self.mapped_loads is None:
             print("  [Optimizer] Running uncoupled baseline aerodynamic solve...")
@@ -406,7 +473,14 @@ class AeroStructuralOptimizer:
         web_vol = 0.0
 
         exc = None
-        with SilenceOutput():
+        # Write clean iteration headers to the log file before entering redirected block
+        with open(self.log_file, "a") as f_log:
+            f_log.write(f"\n==================================================\n")
+            f_log.write(f"  Iteration {self.iter_count:03d} Solver Evaluation\n")
+            f_log.write(f"  Design Vector x: {x.tolist()}\n")
+            f_log.write(f"==================================================\n")
+
+        with SilenceAndCaptureOutput(self.log_file):
             try:
                 # 1. Stations and segments
                 stations = fw.make_zoned_stations(n_stations=10, zones=zones)
@@ -419,6 +493,10 @@ class AeroStructuralOptimizer:
                 )
                 gen = fw.TreeGenerator(self.wing)
                 segs = gen.generate(spec)
+
+                # Robust Segment Check: must have at least 3 segments
+                if len(segs) < 3:
+                    raise ValueError(f"Too few segments generated: {len(segs)}")
 
                 # 2. STEP Export
                 assembly, props = fw.build_brep_webs(segs, self.aero_wing, as_solid=False, output_step=webs_step)
@@ -439,7 +517,6 @@ class AeroStructuralOptimizer:
                     aero_out = os.path.join(self.output_dir, f"{iter_name}_aero_loads.json")
                     coords = fw.extract_oml_grid(self.aero_wing, num_points_profile=40)
                     fw.solve_flowpanel(self.aero_wing, coords, output_json=aero_out, input_json=aero_in)
-                    pass
 
                 # 5. Build CCX Deck
                 sim_inp = fw.build_ccx_deck(
@@ -510,17 +587,7 @@ class AeroStructuralOptimizer:
                 with open(sim_inp, "w") as f_deck:
                     f_deck.write(deck_content)
 
-            except Exception as e:
-                import traceback
-                exc = traceback.format_exc()
-
-        if exc is not None:
-            print("  [DEBUG] Exception in geometry/meshing:")
-            print(exc)
-
-        # 6. Run ccx solver & postprocess outside of SilenceOutput to expose any errors
-        if exc is None:
-            try:
+                # 6. Run ccx solver & postprocess inside SilenceAndCaptureOutput for perfect logs
                 res = fw.run_ccx(sim_inp, convert_vtu=False)
 
                 if res["success"]:
@@ -541,12 +608,16 @@ class AeroStructuralOptimizer:
                         max_stress = float(max(stresses.values()))
 
                     web_vol = compute_web_mesh_volume(mesh_inp, props)
+                    if web_vol < 1e-6:
+                        raise ValueError("Calculated web volume is exactly 0.0 (invalid mesh).")
                 else:
-                    print(f"  [DEBUG] CCX Run failed with stdout:\n{res['stdout']}\nstderr:\n{res['stderr']}")
+                    raise RuntimeError(f"CCX solver execution failed. stdout:\n{res['stdout']}\nstderr:\n{res['stderr']}")
+
             except Exception as e:
                 import traceback
-                print("  [DEBUG] Exception in solver:")
-                print(traceback.format_exc())
+                exc = traceback.format_exc()
+                print("[ERROR] Exception in evaluation:")
+                print(exc)
 
         # Define exact file paths for this iteration
         sim_frd = sim_inp.replace(".inp", ".frd")
@@ -593,17 +664,35 @@ class AeroStructuralOptimizer:
                     except OSError:
                         pass
 
-        vol_frac_residual = (web_vol / self.max_allowable_volume) - 1.0
-        elapsed = time.perf_counter() - t0
+        if exc is not None or web_vol < 1e-6 or compliance >= 1e9:
+            compliance = 1e10
+            web_vol = 0.0
+            vol_frac_residual = 10.0
+        else:
+            if not hasattr(self, "max_allowable_volume") or self.max_allowable_volume is None:
+                vol_frac_residual = 0.0
+            else:
+                vol_frac_residual = (web_vol / self.max_allowable_volume) - 1.0
 
-        print(
-            f"Iter {self.iter_count:03d} | Compliance: {compliance:.6f} N.m | "
+        elapsed = time.perf_counter() - t0
+        self._last_web_vol = web_vol
+
+        msg = (
+            f"Iter {self.iter_count:03d} | Compliance: {compliance:.6e} N.m | "
             f"Web Volume: {web_vol*1e6:.1f} cm3 | Vol Frac Residual: {vol_frac_residual:+.4f} | "
             f"Max Stress: {max_stress*1e-6:.1f} MPa | Elapsed: {elapsed:.1f}s"
         )
 
+        with open(self.log_file, "a") as f_log:
+            f_log.write(msg + "\n")
+
+        if self.iter_count == 0:
+            print("  " + msg)
+
         with open(self.history_csv, "a", newline="") as f:
             writer = csv.writer(f)
+            # VolFracRatio = web_vol / max_allowable_volume (i.e. residual + 1.0)
+            # MaxStress is Von Mises in Pa
             row = [self.iter_count, compliance, web_vol, vol_frac_residual + 1.0, max_stress, elapsed]
             row.extend(x.tolist())
             writer.writerow(row)
@@ -613,18 +702,38 @@ class AeroStructuralOptimizer:
     def optimize(self, method: str = "cobyla", max_iter: int = 50, pop_size: int = 5) -> dict:
         """
         High-level optimizer runner supporting COBYLA, SLSQP, and global Differential Evolution.
+        Performs search in normalized design space [0, 1]^14 to guarantee scaling and convergence stability.
         """
         x_init = self.mapper.get_baseline_vector()
         bounds = self.mapper.bounds
 
+        # Map design space to normalized [0, 1]^14
+        def z_to_x(z):
+            x = np.zeros_like(z)
+            for i, (lb, ub) in enumerate(bounds):
+                x[i] = lb + z[i] * (ub - lb)
+            return x
+
+        def x_to_z(x):
+            z = np.zeros_like(x)
+            for i, (lb, ub) in enumerate(bounds):
+                z[i] = (x[i] - lb) / (ub - lb)
+            return z
+
+        def evaluate_cached_normalized(z):
+            x = z_to_x(z)
+            return self.evaluate_cached(x)
+
+        z_init = x_to_z(x_init)
+        z_bounds = [(0.0, 1.0)] * len(bounds)
+
         print(f"  [Optimizer] Starting optimization with method: {method.upper()}...")
-        print(f"  [Optimizer] Initial variables: {x_init}")
+        print(f"  [Optimizer] Initial physical parameters: {x_init}")
 
         if method.lower() == "cobyla":
-            # COBYLA uses a list of constraint dictionaries: c(x) >= 0
-            # For V / V_max - 1.0 <= 0, the constraint function is: 1.0 - V / V_max >= 0
-            def cobyla_constraint(x):
-                _, constrs = self.evaluate_cached(x)
+            # COBYLA uses a list of constraint dictionaries: c(z) >= 0
+            def cobyla_constraint(z):
+                _, constrs = evaluate_cached_normalized(z)
                 return -constrs[0]
 
             constraints = [{"type": "ineq", "fun": cobyla_constraint}]
@@ -633,19 +742,19 @@ class AeroStructuralOptimizer:
             
             t0 = time.perf_counter()
             res = minimize(
-                fun=lambda x: self.evaluate_cached(x)[0],
-                x0=x_init,
+                fun=lambda z: evaluate_cached_normalized(z)[0],
+                x0=z_init,
                 method="COBYLA",
-                bounds=bounds,
+                bounds=z_bounds,
                 constraints=constraints,
                 options={"maxiter": max_iter},
             )
             elapsed = time.perf_counter() - t0
 
         elif method.lower() == "slsqp":
-            # SLSQP constraint: c(x) >= 0
-            def slsqp_constraint(x):
-                _, constrs = self.evaluate_cached(x)
+            # SLSQP uses c(z) >= 0
+            def slsqp_constraint(z):
+                _, constrs = evaluate_cached_normalized(z)
                 return -constrs[0]
 
             constraints = [{"type": "ineq", "fun": slsqp_constraint}]
@@ -654,30 +763,27 @@ class AeroStructuralOptimizer:
             
             t0 = time.perf_counter()
             res = minimize(
-                fun=lambda x: self.evaluate_cached(x)[0],
-                x0=x_init,
+                fun=lambda z: evaluate_cached_normalized(z)[0],
+                x0=z_init,
                 method="SLSQP",
-                bounds=bounds,
+                bounds=z_bounds,
                 constraints=constraints,
-                options={"maxiter": max_iter, "disp": True},
+                options={"maxiter": max_iter, "disp": True, "eps": 1e-3},
             )
             elapsed = time.perf_counter() - t0
 
         elif method.lower() == "differential_evolution" or method.lower() == "de":
-            # Differential Evolution uses NonlinearConstraint: lb <= c(x) <= ub
             from scipy.optimize import NonlinearConstraint, differential_evolution
 
-            def de_constraint(x):
-                # Returns constraint residual (V / V_max) - 1.0 which we want <= 0
-                return self.evaluate_cached(x)[1][0]
+            def de_constraint(z):
+                return evaluate_cached_normalized(z)[1][0]
 
-            # V_residual <= 0 means: -inf <= de_constraint(x) <= 0.0
             nl_const = NonlinearConstraint(de_constraint, -np.inf, 0.0)
 
             t0 = time.perf_counter()
             res = differential_evolution(
-                func=lambda x: self.evaluate_cached(x)[0],
-                bounds=bounds,
+                func=lambda z: evaluate_cached_normalized(z)[0],
+                bounds=z_bounds,
                 constraints=nl_const,
                 maxiter=max_iter,
                 popsize=pop_size,
@@ -688,13 +794,15 @@ class AeroStructuralOptimizer:
         else:
             raise ValueError(f"Unknown optimization method: {method}")
 
+        # Map back to physical variables
+        best_x = z_to_x(res.x)
+
         print(f"  [Optimizer] Optimization complete in {elapsed:.1f}s!")
-        print(f"  [Optimizer] Best parameters found: {res.x}")
+        print(f"  [Optimizer] Best physical parameters found: {best_x}")
         
         # Save final best iteration files
         try:
-            # Re-evaluate best to preserve its final files
-            self.evaluate_cached(res.x)
+            self.evaluate_cached(best_x)
             for ext in [".inp", ".frd"]:
                 old_path = os.path.join(self.output_dir, f"opt_iter_{self.iter_count:03d}_wing{ext}")
                 new_path = os.path.join(self.output_dir, f"opt_best_final_wing{ext}")
@@ -706,7 +814,7 @@ class AeroStructuralOptimizer:
 
         return {
             "success": res.success,
-            "best_x": res.x,
+            "best_x": best_x,
             "best_fun": res.fun,
             "iterations": self.iter_count,
             "elapsed_s": elapsed,

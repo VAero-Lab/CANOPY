@@ -22,7 +22,7 @@ A Python package for the generation of fractal tree-like structures for aerodyna
 The package can be installed in editable mode using `pip`:
 
 ```bash
-git clone <repository_url>
+git clone https://github.com/VAero-Lab/CANOPY.git
 cd fractal_structures_wing
 pip install -e .
 pip install gmsh  # Required for FEM meshing

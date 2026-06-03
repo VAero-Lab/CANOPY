@@ -15,7 +15,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import frond as fw
+import canopy as cp
 from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output')
@@ -24,7 +24,7 @@ os.makedirs(OUT, exist_ok=True)
 
 def main():
     _, wing = get_base_wing(bm='full_wing')
-    viz = fw.Viz(wing)
+    viz = cp.Viz(wing)
 
     # ════════════════════════════════════════════════════════════
     # 1. Per-depth mode switching
@@ -32,7 +32,7 @@ def main():
     print('  1. Per-depth mode switching...')
 
     # Sympodial at depth 0 → monopodial at depth 1 → dichotomous at depth 2
-    sub_switching = fw.SubParams(
+    sub_switching = cp.SubParams(
         max_depth=3,
         angles=[35, 30, 25],
         length_ratios=[0.55, 0.5, 0.45],
@@ -42,7 +42,7 @@ def main():
     )
 
     # Compare: uniform mode vs switching mode
-    sub_uniform = fw.SubParams(
+    sub_uniform = cp.SubParams(
         max_depth=3,
         angles=[35, 30, 25],
         length_ratios=[0.55, 0.5, 0.45],
@@ -56,14 +56,14 @@ def main():
         ('sympodial only', sub_uniform),
         ('symp→mono→dich', sub_switching),
     ]:
-        stations = fw.make_diagonal_only_stations(
+        stations = cp.make_diagonal_only_stations(
             n_stations=12, angle=35, length=2.0, sub=sub,
         )
-        spec = fw.TrunkSpec(
+        spec = cp.TrunkSpec(
             chord_frac=0.5, span_cov=1.0, thick=0.004,
             stations=stations, allow_crossing=True,
         )
-        gen = fw.TreeGenerator(wing)
+        gen = cp.TreeGenerator(wing)
         segs = gen.generate(spec)
         st = gen.stats()
         results[f'{label}\n({st["n"]} segs)'] = segs
@@ -86,13 +86,13 @@ def main():
             'eta_start': 0.0, 'eta_end': 0.35,
             'diag_angle': 30, 'chord_angle': 70,
             'diag_length': 2.5, 'chord_length': 2.0,
-            'diag_sub': fw.SubParams(
+            'diag_sub': cp.SubParams(
                 mode='sympodial', max_depth=3,
                 angles=[30, 25, 20],
                 length_ratios=[0.55, 0.5, 0.45],
                 min_length=0.02,
             ),
-            'chord_sub': fw.SubParams(
+            'chord_sub': cp.SubParams(
                 mode='dichotomous', max_depth=1,
                 angles=[25],
             ),
@@ -102,12 +102,12 @@ def main():
             'eta_start': 0.35, 'eta_end': 0.7,
             'diag_angle': 40, 'chord_angle': 75,
             'diag_length': 1.8, 'chord_length': 1.5,
-            'diag_sub': fw.SubParams(
+            'diag_sub': cp.SubParams(
                 mode=['monopodial', 'sympodial'], max_depth=2,
                 angles=[35, 30],
                 min_length=0.02,
             ),
-            'chord_sub': fw.SubParams(
+            'chord_sub': cp.SubParams(
                 mode='sympodial', max_depth=1,
                 angles=[20],
             ),
@@ -117,39 +117,39 @@ def main():
             'eta_start': 0.7, 'eta_end': 1.0,
             'diag_angle': 50, 'chord_angle': None,
             'diag_length': 1.2, 'chord_length': 0.8,
-            'diag_sub': fw.SubParams(
+            'diag_sub': cp.SubParams(
                 mode='monochasium', max_depth=2,
                 angles=[40, 35],
                 min_length=0.02,
             ),
-            'chord_sub': fw.SubParams(mode='dichotomous', max_depth=1),
+            'chord_sub': cp.SubParams(mode='dichotomous', max_depth=1),
             'thick_frac': 0.5,
         },
     ]
 
-    stations_zoned = fw.make_zoned_stations(
+    stations_zoned = cp.make_zoned_stations(
         n_stations=16,
         zones=zones,
         spacing='geometric',
         spacing_kwargs={'ratio': 1.5},
     )
 
-    spec_zoned = fw.TrunkSpec(
+    spec_zoned = cp.TrunkSpec(
         chord_frac=0.5, span_cov=1.0, thick=0.004,
         stations=stations_zoned, allow_crossing=True,
     )
-    gen = fw.TreeGenerator(wing)
+    gen = cp.TreeGenerator(wing)
     segs_zoned = gen.generate(spec_zoned)
     st_z = gen.stats()
     print(f'    Zoned: {st_z["n"]} segs')
 
     # Compare with uniform mixed
-    stations_uniform = fw.make_mixed_stations(n_stations=16)
-    spec_uniform = fw.TrunkSpec(
+    stations_uniform = cp.make_mixed_stations(n_stations=16)
+    spec_uniform = cp.TrunkSpec(
         chord_frac=0.5, span_cov=1.0, thick=0.004,
         stations=stations_uniform, allow_crossing=True,
     )
-    gen2 = fw.TreeGenerator(wing)
+    gen2 = cp.TreeGenerator(wing)
     segs_uniform = gen2.generate(spec_uniform)
     st_u = gen2.stats()
 
@@ -166,7 +166,7 @@ def main():
     # ════════════════════════════════════════════════════════════
     print('\n  3. Graded parameters root → tip...')
 
-    stations_graded = fw.make_graded_stations(
+    stations_graded = cp.make_graded_stations(
         n_stations=14,
         spacing='geometric',
         spacing_kwargs={'ratio': 1.4},
@@ -177,11 +177,11 @@ def main():
         thick_frac_range=(0.85, 0.4),
     )
 
-    spec_graded = fw.TrunkSpec(
+    spec_graded = cp.TrunkSpec(
         chord_frac=0.5, span_cov=1.0, thick=0.004,
         stations=stations_graded, allow_crossing=True,
     )
-    gen = fw.TreeGenerator(wing)
+    gen = cp.TreeGenerator(wing)
     segs_graded = gen.generate(spec_graded)
     st_g = gen.stats()
     print(f'    Graded: {st_g["n"]} segs')
@@ -200,31 +200,31 @@ def main():
     print('\n  4. Per-branch thickness control...')
 
     # Heavy diagonal branches + light chordwise branches
-    sub_heavy = fw.SubParams(
+    sub_heavy = cp.SubParams(
         max_depth=2, angles=[30], mode='sympodial', min_length=0.02,
     )
-    sub_light = fw.SubParams(
+    sub_light = cp.SubParams(
         max_depth=1, angles=[25], mode='dichotomous',
     )
 
     stations_thick = []
-    for p in fw.distribute_stations(12, 'uniform'):
+    for p in cp.distribute_stations(12, 'uniform'):
         bl = 2.0 * (1 - 0.4 * p)
-        stations_thick.append(fw.Station(
+        stations_thick.append(cp.Station(
             position=p,
             branches=[
-                fw.BranchDef(angle=35,  length=bl, thick_frac=0.9, sub=copy.deepcopy(sub_heavy)),
-                fw.BranchDef(angle=-35, length=bl, thick_frac=0.9, sub=copy.deepcopy(sub_heavy)),
-                fw.BranchDef(angle=75,  length=bl*0.8, thick_frac=0.3, sub=copy.deepcopy(sub_light)),
-                fw.BranchDef(angle=-75, length=bl*0.8, thick_frac=0.3, sub=copy.deepcopy(sub_light)),
+                cp.BranchDef(angle=35,  length=bl, thick_frac=0.9, sub=copy.deepcopy(sub_heavy)),
+                cp.BranchDef(angle=-35, length=bl, thick_frac=0.9, sub=copy.deepcopy(sub_heavy)),
+                cp.BranchDef(angle=75,  length=bl*0.8, thick_frac=0.3, sub=copy.deepcopy(sub_light)),
+                cp.BranchDef(angle=-75, length=bl*0.8, thick_frac=0.3, sub=copy.deepcopy(sub_light)),
             ],
         ))
 
-    spec_thick = fw.TrunkSpec(
+    spec_thick = cp.TrunkSpec(
         chord_frac=0.5, span_cov=1.0, thick=0.004,
         stations=stations_thick, allow_crossing=True,
     )
-    gen = fw.TreeGenerator(wing)
+    gen = cp.TreeGenerator(wing)
     segs_thick = gen.generate(spec_thick)
     st_t = gen.stats()
     print(f'    Custom thickness: {st_t["n"]} segs')
@@ -252,7 +252,7 @@ def main():
             'eta_start': 0.0, 'eta_end': 0.3,
             'diag_angle': 25, 'chord_angle': 65,
             'diag_length': 3.0, 'chord_length': 2.5,
-            'diag_sub': fw.SubParams(
+            'diag_sub': cp.SubParams(
                 mode=['sympodial', 'monopodial', 'dichotomous'],
                 max_depth=3,
                 angles=[30, 25, 20],
@@ -260,7 +260,7 @@ def main():
                 thickness_ratios=[0.75, 0.7, 0.65],
                 min_length=0.01,
             ),
-            'chord_sub': fw.SubParams(
+            'chord_sub': cp.SubParams(
                 mode='dichotomous', max_depth=2,
                 angles=[20, 15],
                 length_ratios=[0.5, 0.45],
@@ -272,14 +272,14 @@ def main():
             'eta_start': 0.3, 'eta_end': 0.65,
             'diag_angle': 35, 'chord_angle': 75,
             'diag_length': 2.0, 'chord_length': 1.5,
-            'diag_sub': fw.SubParams(
+            'diag_sub': cp.SubParams(
                 mode=['monopodial', 'sympodial'],
                 max_depth=2,
                 angles=[35, 30],
                 length_ratios=[0.5, 0.45],
                 min_length=0.02,
             ),
-            'chord_sub': fw.SubParams(
+            'chord_sub': cp.SubParams(
                 mode='sympodial', max_depth=1,
                 angles=[20],
                 min_length=0.03,
@@ -290,13 +290,13 @@ def main():
             'eta_start': 0.65, 'eta_end': 1.0,
             'diag_angle': 45, 'chord_angle': 80,
             'diag_length': 1.0, 'chord_length': 0.8,
-            'diag_sub': fw.SubParams(
+            'diag_sub': cp.SubParams(
                 mode='monochasium', max_depth=2,
                 angles=[40, 35],
                 length_ratios=[0.45, 0.4],
                 min_length=0.02,
             ),
-            'chord_sub': fw.SubParams(
+            'chord_sub': cp.SubParams(
                 mode='dichotomous', max_depth=1,
                 angles=[25],
             ),
@@ -304,18 +304,18 @@ def main():
         },
     ]
 
-    stations_organic = fw.make_zoned_stations(
+    stations_organic = cp.make_zoned_stations(
         n_stations=18,
         zones=organic_zones,
         spacing='geometric',
         spacing_kwargs={'ratio': 1.6},
     )
 
-    spec_organic = fw.TrunkSpec(
+    spec_organic = cp.TrunkSpec(
         chord_frac=0.5, span_cov=1.0, thick=0.004,
         stations=stations_organic, allow_crossing=True,
     )
-    gen = fw.TreeGenerator(wing)
+    gen = cp.TreeGenerator(wing)
     segs_organic = gen.generate(spec_organic)
     st_o = gen.stats()
     print(f'    Organic: {st_o["n"]} segs, L={st_o["L"]}m')

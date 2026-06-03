@@ -10,8 +10,8 @@ Verifies that:
 import unittest
 import numpy as np
 
-from frond.structures import Seg, SubParams, BranchDef, Station, TrunkSpec, segments_cross
-from frond.generator import TreeGenerator
+from canopy.structures import Seg, SubParams, BranchDef, Station, TrunkSpec, segments_cross
+from canopy.generator import TreeGenerator
 
 
 class MockWingAdapter:

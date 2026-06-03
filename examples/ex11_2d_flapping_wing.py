@@ -5,10 +5,10 @@ import numpy as np
 # Add src to path for running directly
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-import frond as fw
-from frond.meshing import GmshMesher2D, append_1d_beams
-from frond.aero_solver import run_vlm_analysis, map_aerodynamic_loads
-from frond.fem_solver import parse_mesh_for_mapping, build_ccx_deck
+import canopy as cp
+from canopy.meshing import GmshMesher2D, append_1d_beams
+from canopy.aero_solver import run_vlm_analysis, map_aerodynamic_loads
+from canopy.fem_solver import parse_mesh_for_mapping, build_ccx_deck
 from utils import get_base_wing
 
 OUT = 'examples/output_2d_flapping'
@@ -33,35 +33,35 @@ def main():
         num_sections=20
     )
     aero_wing = MultiSegmentWing().add_segment(spec)
-    wing = fw.AeroWingAdapter(aero_wing, bm='full_wing')
+    wing = cp.AeroWingAdapter(aero_wing, bm='full_wing')
     
     # 2. Fractal Structure Generation (Multi-Trunk)
-    sub_mt = fw.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.005)
+    sub_mt = cp.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.005)
     specs = [
-        fw.TrunkSpec(
+        cp.TrunkSpec(
             chord_frac=0.25, span_cov=1.0, thick=0.0006,
-            stations=fw.make_mixed_stations(
+            stations=cp.make_mixed_stations(
                 n_stations=8, diag_angle=40, chord_angle=70,
                 diag_length=0.08, chord_length=0.05,
-                diag_sub=fw.SubParams(max_depth=3, mode='sympodial', min_length=0.005),
-                chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+                diag_sub=cp.SubParams(max_depth=3, mode='sympodial', min_length=0.005),
+                chord_sub=cp.SubParams(mode='dichotomous', max_depth=1),
             ),
             allow_crossing=False,
             protect_trunk=True,
         ),
-        fw.TrunkSpec(
+        cp.TrunkSpec(
             chord_frac=0.75, span_cov=1.0, thick=0.0006,
-            stations=fw.make_mixed_stations(
+            stations=cp.make_mixed_stations(
                 n_stations=8, diag_angle=-40, chord_angle=-70,
                 diag_length=0.08, chord_length=0.05,
-                diag_sub=fw.SubParams(max_depth=2, mode='sympodial', min_length=0.005),
-                chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+                diag_sub=cp.SubParams(max_depth=2, mode='sympodial', min_length=0.005),
+                chord_sub=cp.SubParams(mode='dichotomous', max_depth=1),
             ),
             allow_crossing=False,
             protect_trunk=True,
         )
     ]
-    gen = fw.TreeGenerator(wing)
+    gen = cp.TreeGenerator(wing)
     segs = gen.generate_multi(specs)
     print(f"  Generated {len(segs)} segments.")
 
@@ -142,7 +142,7 @@ def main():
         print("  FEM solve complete. Converting results to VTK...")
         subprocess.run(["ccx2paraview", "wing_skin_sim.frd", "vtu"], check=True, capture_output=True, text=True)
         print("  Converted to VTU successfully.")
-        from frond.run_utils import split_vtu_file
+        from canopy.run_utils import split_vtu_file
         split_vtu_file("wing_skin_sim.vtu")
     except subprocess.CalledProcessError as e:
         print(f"  Warning: Could not run FEM or ccx2paraview. Command {e.cmd} returned non-zero exit status {e.returncode}.")

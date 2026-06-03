@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "frond"
+name = "canopy"
 version = "0.2.0"
-description = "Fractal tree-branch wing structure generator with integrated 3D aerodynamic analysis for structural optimization"
+description = "CANOPY: Constructive Aerostructural Natural OPtimization of flYing structures"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

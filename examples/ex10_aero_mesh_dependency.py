@@ -9,7 +9,7 @@ of total Lift and Drag forces.
 import os
 import time
 import numpy as np
-import frond as fw
+import canopy as cp
 from utils import get_base_wing
 
 def main():
@@ -48,7 +48,7 @@ def main():
         t0 = time.time()
         
         # Run aerodynamic analysis using our modular spanwise and chordwise settings
-        aero_data = fw.run_aerodynamic_analysis(
+        aero_data = cp.run_aerodynamic_analysis(
             wing=aero_wing,
             aoa=aoa,
             magVinf=velocity,

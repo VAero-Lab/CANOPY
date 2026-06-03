@@ -24,7 +24,7 @@ from matplotlib.collections import LineCollection
 import matplotlib.colors as mcolors
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import frond as fw
+import canopy as cp
 from examples.utils import get_base_wing
 
 
@@ -51,32 +51,32 @@ def main():
             "eta_start": 0.0, "eta_end": 0.35,
             "diag_angle": 25.0, "chord_angle": 65.0,
             "diag_length": 3.0, "chord_length": 2.5,
-            "diag_sub": fw.SubParams(
+            "diag_sub": cp.SubParams(
                 mode=["sympodial", "monopodial"], max_depth=3,
                 angles=[30, 25, 20], length_ratios=[0.6, 0.55, 0.5],
                 min_length=0.015),
-            "chord_sub": fw.SubParams(mode="dichotomous", max_depth=2),
+            "chord_sub": cp.SubParams(mode="dichotomous", max_depth=2),
             "thick_frac": 0.85,
         },
         {
             "eta_start": 0.35, "eta_end": 0.7,
             "diag_angle": 40.0, "chord_angle": 75.0,
             "diag_length": 1.8, "chord_length": 1.5,
-            "diag_sub": fw.SubParams(mode="monopodial", max_depth=2, min_length=0.02),
-            "chord_sub": fw.SubParams(mode="sympodial", max_depth=1),
+            "diag_sub": cp.SubParams(mode="monopodial", max_depth=2, min_length=0.02),
+            "chord_sub": cp.SubParams(mode="sympodial", max_depth=1),
             "thick_frac": 0.7,
         },
         {
             "eta_start": 0.7, "eta_end": 1.0,
             "diag_angle": 50.0, "chord_angle": None,
             "diag_length": 1.2, "chord_length": 0.8,
-            "diag_sub": fw.SubParams(mode="monochasium", max_depth=2, min_length=0.02),
-            "chord_sub": fw.SubParams(mode="dichotomous", max_depth=1),
+            "diag_sub": cp.SubParams(mode="monochasium", max_depth=2, min_length=0.02),
+            "chord_sub": cp.SubParams(mode="dichotomous", max_depth=1),
             "thick_frac": 0.5,
         },
     ]
-    mapper = fw.FractalParameterMapper(baseline_zones)
-    gen = fw.TreeGenerator(wing)
+    mapper = cp.FractalParameterMapper(baseline_zones)
+    gen = cp.TreeGenerator(wing)
 
     # ── compute planform outline from the adapter (matches Viz._dom) ──
     eta = np.linspace(0, 1, 200)
@@ -105,8 +105,8 @@ def main():
         x_vec = np.array([float(row[f"x_{i}"]) for i in range(14)])
 
         zones, trunk_thick = mapper.vector_to_params(x_vec)
-        stations = fw.make_zoned_stations(n_stations=10, zones=zones)
-        spec = fw.TrunkSpec(
+        stations = cp.make_zoned_stations(n_stations=10, zones=zones)
+        spec = cp.TrunkSpec(
             chord_frac=0.5, span_cov=1.0, thick=trunk_thick,
             stations=stations, allow_crossing=False,
         )

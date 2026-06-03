@@ -13,7 +13,7 @@ import matplotlib
 # matplotlib.use('Agg') # Commented out to allow interactive plotting (plt.show)
 import matplotlib.pyplot as plt
 import numpy as np
-import frond as fw
+import canopy as cp
 from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output_crossing')
@@ -26,12 +26,12 @@ def generate_pair(wing, stations_fn, label, viz, **spec_kw):
     for cross in [True, False]:
         tag = 'ON' if cross else 'OFF'
         stations = stations_fn()
-        spec = fw.TrunkSpec(
+        spec = cp.TrunkSpec(
             stations=stations,
             allow_crossing=cross,
             **spec_kw,
         )
-        gen = fw.TreeGenerator(wing)
+        gen = cp.TreeGenerator(wing)
         segs = gen.generate(spec)
         st = gen.stats()
         results[tag] = (segs, st)
@@ -49,12 +49,12 @@ def main():
     # ════════════════════════════════════════════════════════════
     print('\n  1. Sympodial — wingbox')
     _, wing_wb = get_base_wing(bm='wingbox')
-    viz_wb = fw.Viz(wing_wb)
+    viz_wb = cp.Viz(wing_wb)
 
     def symp_stations():
-        return fw.make_diagonal_only_stations(
+        return cp.make_diagonal_only_stations(
             n_stations=14, angle=40, length=2.5,
-            sub=fw.SubParams(max_depth=3, angles=[30, 35, 40], mode='sympodial'),
+            sub=cp.SubParams(max_depth=3, angles=[30, 35, 40], mode='sympodial'),
         )
 
     r = generate_pair(wing_wb, symp_stations, 'sympodial_wb',
@@ -74,15 +74,15 @@ def main():
     # ════════════════════════════════════════════════════════════
     print('\n  2. Mixed mode — full wing')
     _, wing_fw = get_base_wing(bm='full_wing')
-    viz_fw = fw.Viz(wing_fw)
+    viz_fw = cp.Viz(wing_fw)
 
     def mixed_stations():
-        return fw.make_mixed_stations(n_stations=16)
+        return cp.make_mixed_stations(n_stations=16)
 
     r = generate_pair(wing_fw, mixed_stations, 'mixed_fw',
                       viz_fw, chord_frac=0.5, span_cov=1.0, thick=0.004)
 
-    fig = viz_fw.cmp(
+    fig = viz_cp.cmp(
         r['ON'][0], r['OFF'][0],
         f'Crossing ON ({r["ON"][1]["n"]} segs)',
         f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
@@ -97,9 +97,9 @@ def main():
     print('\n  3. Dense monopodial — full wing')
 
     def mono_dense():
-        return fw.make_diagonal_only_stations(
+        return cp.make_diagonal_only_stations(
             n_stations=16, angle=25, length=3.0,
-            sub=fw.SubParams(
+            sub=cp.SubParams(
                 max_depth=3, angles=[20, 25, 30],
                 length_ratios=[0.6, 0.55, 0.5],
                 mode='monopodial', min_length=0.02,
@@ -109,7 +109,7 @@ def main():
     r = generate_pair(wing_fw, mono_dense, 'monopodial_dense',
                       viz_fw, chord_frac=0.5, span_cov=1.0, thick=0.004)
 
-    fig = viz_fw.cmp(
+    fig = viz_cp.cmp(
         r['ON'][0], r['OFF'][0],
         f'Crossing ON ({r["ON"][1]["n"]} segs)',
         f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
@@ -124,9 +124,9 @@ def main():
     print('\n  4. Per-depth mode switching + crossing OFF')
 
     def depth_switch():
-        return fw.make_diagonal_only_stations(
+        return cp.make_diagonal_only_stations(
             n_stations=14, angle=35, length=2.0,
-            sub=fw.SubParams(
+            sub=cp.SubParams(
                 max_depth=3,
                 angles=[35, 30, 25],
                 length_ratios=[0.55, 0.5, 0.45],
@@ -138,7 +138,7 @@ def main():
     r = generate_pair(wing_fw, depth_switch, 'depth_switch',
                       viz_fw, chord_frac=0.5, span_cov=1.0, thick=0.004)
 
-    fig = viz_fw.cmp(
+    fig = viz_cp.cmp(
         r['ON'][0], r['OFF'][0],
         f'Crossing ON ({r["ON"][1]["n"]} segs)',
         f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
@@ -154,14 +154,14 @@ def main():
     print('\n  5. Geometric spacing + crossing OFF')
 
     def geom_mixed():
-        return fw.make_mixed_stations(
+        return cp.make_mixed_stations(
             n_stations=14, spacing='geometric', spacing_kwargs={'ratio': 2.0},
         )
 
     r = generate_pair(wing_fw, geom_mixed, 'geom_mixed',
                       viz_fw, chord_frac=0.5, span_cov=1.0, thick=0.004)
 
-    fig = viz_fw.cmp(
+    fig = viz_cp.cmp(
         r['ON'][0], r['OFF'][0],
         f'Crossing ON ({r["ON"][1]["n"]} segs)',
         f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
@@ -182,32 +182,32 @@ def main():
                 'eta_start': 0.0, 'eta_end': 0.35,
                 'diag_angle': 25, 'chord_angle': 65,
                 'diag_length': 3.0, 'chord_length': 2.5,
-                'diag_sub': fw.SubParams(
+                'diag_sub': cp.SubParams(
                     mode=['sympodial', 'monopodial'], max_depth=3,
                     angles=[30, 25, 20], length_ratios=[0.6, 0.55, 0.5],
                     min_length=0.015,
                 ),
-                'chord_sub': fw.SubParams(mode='dichotomous', max_depth=2),
+                'chord_sub': cp.SubParams(mode='dichotomous', max_depth=2),
                 'thick_frac': 0.85,
             },
             {
                 'eta_start': 0.35, 'eta_end': 0.7,
                 'diag_angle': 40, 'chord_angle': 75,
                 'diag_length': 1.8, 'chord_length': 1.5,
-                'diag_sub': fw.SubParams(mode='monopodial', max_depth=2, min_length=0.02),
-                'chord_sub': fw.SubParams(mode='sympodial', max_depth=1),
+                'diag_sub': cp.SubParams(mode='monopodial', max_depth=2, min_length=0.02),
+                'chord_sub': cp.SubParams(mode='sympodial', max_depth=1),
                 'thick_frac': 0.7,
             },
             {
                 'eta_start': 0.7, 'eta_end': 1.0,
                 'diag_angle': 50, 'chord_angle': None,
                 'diag_length': 1.2, 'chord_length': 0.8,
-                'diag_sub': fw.SubParams(mode='monochasium', max_depth=2, min_length=0.02),
-                'chord_sub': fw.SubParams(mode='dichotomous', max_depth=1),
+                'diag_sub': cp.SubParams(mode='monochasium', max_depth=2, min_length=0.02),
+                'chord_sub': cp.SubParams(mode='dichotomous', max_depth=1),
                 'thick_frac': 0.5,
             },
         ]
-        return fw.make_zoned_stations(
+        return cp.make_zoned_stations(
             n_stations=18, zones=zones,
             spacing='geometric', spacing_kwargs={'ratio': 1.6},
         )
@@ -215,7 +215,7 @@ def main():
     r = generate_pair(wing_fw, organic_zoned, 'organic_zoned',
                       viz_fw, chord_frac=0.5, span_cov=1.0, thick=0.004)
 
-    fig = viz_fw.cmp(
+    fig = viz_cp.cmp(
         r['ON'][0], r['OFF'][0],
         f'Crossing ON ({r["ON"][1]["n"]} segs)',
         f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
@@ -226,7 +226,7 @@ def main():
     fig.savefig(f'{OUT}/ex05_06_zoned_organic.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
 
-    fig = viz_fw.view3d(
+    fig = viz_cp.view3d(
         r['OFF'][0],
         title=f'Crossing OFF ({r["OFF"][1]["n"]} segs)',
     )
@@ -245,35 +245,35 @@ def main():
     # Use full_wing + wide-angle mixed stations so branches from
     # the two trunks overlap significantly, making the cross-trunk
     # crossing enforcement clearly visible.
-    sub_mt = fw.SubParams(
+    sub_mt = cp.SubParams(
         max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.02,
     )
 
     for allow in [True, False]:
         tag = 'ON' if allow else 'OFF'
         specs = [
-            fw.TrunkSpec(
+            cp.TrunkSpec(
                 chord_frac=0.25, span_cov=1.0, thick=0.004,
-                stations=fw.make_mixed_stations(
+                stations=cp.make_mixed_stations(
                     n_stations=12, diag_angle=40, chord_angle=70,
                     diag_length=2.5, chord_length=2.0,
                     diag_sub=copy.deepcopy(sub_mt),
-                    chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+                    chord_sub=cp.SubParams(mode='dichotomous', max_depth=1),
                 ),
                 allow_crossing=allow,
             ),
-            fw.TrunkSpec(
+            cp.TrunkSpec(
                 chord_frac=0.75, span_cov=1.0, thick=0.004,
-                stations=fw.make_mixed_stations(
+                stations=cp.make_mixed_stations(
                     n_stations=12, diag_angle=-40, chord_angle=-70,
                     diag_length=2.5, chord_length=2.0,
                     diag_sub=copy.deepcopy(sub_mt),
-                    chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+                    chord_sub=cp.SubParams(mode='dichotomous', max_depth=1),
                 ),
                 allow_crossing=allow,
             ),
         ]
-        gen = fw.TreeGenerator(wing_fw)
+        gen = cp.TreeGenerator(wing_fw)
         segs = gen.generate_multi(specs)
         st = gen.stats()
         print(f'    multi-trunk crossing {tag}: {st["n"]} segs')
@@ -283,7 +283,7 @@ def main():
         else:
             segs_off, st_off = segs, st
 
-    fig = viz_fw.cmp(
+    fig = viz_cp.cmp(
         segs_on, segs_off,
         f'Crossing ON ({st_on["n"]} segs, 2 trunks)',
         f'Crossing OFF ({st_off["n"]} segs, 2 trunks)',
@@ -300,36 +300,36 @@ def main():
 
     # Primary trunk is fully protected, secondary trunk stops when it hits primary's branches
     specs_dyn = [
-        fw.TrunkSpec(
+        cp.TrunkSpec(
             chord_frac=0.3, span_cov=1.0, thick=0.004,
-            stations=fw.make_mixed_stations(
+            stations=cp.make_mixed_stations(
                 n_stations=14, diag_angle=40, chord_angle=70,
                 diag_length=3.0, chord_length=2.0,
-                diag_sub=fw.SubParams(max_depth=3, angles=[30, 25, 20], mode='sympodial', min_length=0.02),
-                chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+                diag_sub=cp.SubParams(max_depth=3, angles=[30, 25, 20], mode='sympodial', min_length=0.02),
+                chord_sub=cp.SubParams(mode='dichotomous', max_depth=1),
             ),
             allow_crossing=False,
             protect_trunk=True, # Primary trunk ignores crossings
         ),
-        fw.TrunkSpec(
+        cp.TrunkSpec(
             chord_frac=0.8, span_cov=1.0, thick=0.004,
-            stations=fw.make_mixed_stations(
+            stations=cp.make_mixed_stations(
                 n_stations=14, diag_angle=-40, chord_angle=-70,
                 diag_length=2.5, chord_length=2.0,
-                diag_sub=fw.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.02),
-                chord_sub=fw.SubParams(mode='dichotomous', max_depth=1),
+                diag_sub=cp.SubParams(max_depth=2, angles=[35, 30], mode='sympodial', min_length=0.02),
+                chord_sub=cp.SubParams(mode='dichotomous', max_depth=1),
             ),
             allow_crossing=False,
             protect_trunk=False, # Secondary trunk dynamically stops if it hits a crossing
         ),
     ]
 
-    gen_dyn = fw.TreeGenerator(wing_fw)
+    gen_dyn = cp.TreeGenerator(wing_fw)
     segs_dyn = gen_dyn.generate_multi(specs_dyn)
     st_dyn = gen_dyn.stats()
     print(f'    dynamic termination: {st_dyn["n"]} segs')
 
-    fig = viz_fw.view3d(
+    fig = viz_cp.view3d(
         segs_dyn,
         title=f'Dynamic Trunk Termination ({st_dyn["n"]} segs)\nPrimary protected (chord_frac=0.3), Secondary unprotected (chord_frac=0.8)',
     )
@@ -353,17 +353,17 @@ def main():
 
     gallery = {}
     for label, wing, viz, st_fn in configs:
-        spec = fw.TrunkSpec(
+        spec = cp.TrunkSpec(
             chord_frac=0.5, span_cov=1.0, thick=0.004,
             stations=st_fn(), allow_crossing=False,
         )
-        gen = fw.TreeGenerator(wing)
+        gen = cp.TreeGenerator(wing)
         segs = gen.generate(spec)
         st = gen.stats()
         gallery[f'{label}\n({st["n"]} segs)'] = segs
 
     # Use the full_wing viz for the gallery (wider domain looks better)
-    fig = viz_fw.multi(gallery, ww=4.5)
+    fig = viz_cp.multi(gallery, ww=4.5)
     fig.suptitle('Gallery — all designs with crossing OFF',
                  fontsize=14, fontweight='bold', y=1.02)
     fig.savefig(f'{OUT}/ex05_09_gallery_nocross.png', dpi=150, bbox_inches='tight')

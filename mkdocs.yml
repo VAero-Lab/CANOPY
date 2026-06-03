@@ -1,7 +1,7 @@
-site_name: FROND Documentation
-site_description: Fractal Recursive Organic Network Design
-repo_url: https://github.com/VAero-Lab/FROND
-repo_name: VAero-Lab/FROND
+site_name: CANOPY Documentation
+site_description: Constructive Aerostructural Natural OPtimization of flYing structures
+repo_url: https://github.com/VAero-Lab/CANOPY
+repo_name: VAero-Lab/CANOPY
 
 theme:
   name: material

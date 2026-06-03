@@ -1,4 +1,4 @@
-import frond as fw
+import canopy as cp
 from aeroshape.geometry.wings import MultiSegmentWing, SegmentSpec
 from aeroshape.geometry.airfoils import AirfoilProfile
 
@@ -13,4 +13,4 @@ def get_base_wing(bm='wingbox'):
         num_sections=20
     )
     aero_w = MultiSegmentWing().add_segment(spec)
-    return aero_w, fw.AeroWingAdapter(aero_w, bm=bm)
+    return aero_w, cp.AeroWingAdapter(aero_w, bm=bm)

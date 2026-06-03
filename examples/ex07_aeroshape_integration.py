@@ -10,7 +10,7 @@ non-conformal multi-point constraint (glue) FEM meshing.
 """
 
 import os
-import frond as fw
+import canopy as cp
 from aeroshape.nurbs.export import NurbsExporter
 from utils import get_base_wing
 
@@ -28,17 +28,17 @@ def main():
 
     # 2. Configure Fractal Structure
     print('2. Generating Fractal web network...')
-    stations = fw.make_mixed_stations(
+    stations = cp.make_mixed_stations(
         n_stations=8,
         diag_angle=40,
         chord_angle=80,
         diag_length=2.5,
         chord_length=1.5,
-        diag_sub=fw.SubParams(mode='sympodial', max_depth=2, min_length=0.1),
-        chord_sub=fw.SubParams(mode='dichotomous', max_depth=1, min_length=0.1)
+        diag_sub=cp.SubParams(mode='sympodial', max_depth=2, min_length=0.1),
+        chord_sub=cp.SubParams(mode='dichotomous', max_depth=1, min_length=0.1)
     )
 
-    spec = fw.TrunkSpec(
+    spec = cp.TrunkSpec(
         chord_frac=0.5,
         span_cov=1.0,
         thick=0.005,  # 5mm trunk thickness
@@ -46,7 +46,7 @@ def main():
         allow_crossing=False
     )
 
-    gen = fw.TreeGenerator(wing_adapter)
+    gen = cp.TreeGenerator(wing_adapter)
     segs = gen.generate(spec)
     st = gen.stats()
     print(f'   -> Generated {st["n"]} segments.')
@@ -64,12 +64,12 @@ def main():
 
     # Export Webs as Shells (2D surfaces perfectly matching OML)
     print(f'   -> Generating Shell Webs (Mid-surfaces)...')
-    webs_shell, props = fw.build_brep_webs(segs, aero_w, as_solid=False, output_step=step_webs_shell)
+    webs_shell, props = cp.build_brep_webs(segs, aero_w, as_solid=False, output_step=step_webs_shell)
     print(f'      Saved to: {step_webs_shell}')
 
     # Export Webs as Solids (3D thickened blocks matching OML)
     print(f'   -> Generating Solid Webs (Thickened)...')
-    webs_solid, _ = fw.build_brep_webs(segs, aero_w, as_solid=True, output_step=step_webs_solid)
+    webs_solid, _ = cp.build_brep_webs(segs, aero_w, as_solid=True, output_step=step_webs_solid)
     print(f'      Saved to: {step_webs_solid}')
 
     print('='*65)

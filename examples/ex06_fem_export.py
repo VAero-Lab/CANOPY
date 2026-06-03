@@ -11,7 +11,7 @@ Demonstrates the complete FEM pipeline:
 """
 
 import os
-import frond as fw
+import canopy as cp
 import matplotlib.pyplot as plt
 from utils import get_base_wing
 
@@ -26,17 +26,17 @@ def main():
     # ── 1. Generate fractal structure ──
     aero_wing, wing = get_base_wing(bm='wingbox')
     
-    stations = fw.make_mixed_stations(
+    stations = cp.make_mixed_stations(
         n_stations=5,
         diag_angle=45,
         chord_angle=90,
         diag_length=2.0,
         chord_length=1.5,
-        diag_sub=fw.SubParams(mode='sympodial', max_depth=1, min_length=0.1),
-        chord_sub=fw.SubParams(mode='dichotomous', max_depth=1, min_length=0.1)
+        diag_sub=cp.SubParams(mode='sympodial', max_depth=1, min_length=0.1),
+        chord_sub=cp.SubParams(mode='dichotomous', max_depth=1, min_length=0.1)
     )
 
-    spec = fw.TrunkSpec(
+    spec = cp.TrunkSpec(
         chord_frac=0.5,
         span_cov=1.0,
         thick=0.005,  # 5mm trunk thickness
@@ -44,7 +44,7 @@ def main():
         allow_crossing=False
     )
 
-    gen = fw.TreeGenerator(wing)
+    gen = cp.TreeGenerator(wing)
     segs = gen.generate(spec)
     st = gen.stats()
     print(f'Generated {st["n"]} raw segments (total length {st["L"]}m).')
@@ -55,16 +55,16 @@ def main():
     skin_step_path = os.path.join(OUT, 'fractal_mesh_skin.step')
     inp_path = os.path.join(OUT, 'fractal_mesh.inp')
     
-    assembly, props = fw.build_brep_webs(segs, aero_wing, as_solid=False, output_step=webs_step_path)
+    assembly, props = cp.build_brep_webs(segs, aero_wing, as_solid=False, output_step=webs_step_path)
     print(f'  -> Exported Fractal Webs STEP to: {webs_step_path}')
     
-    fw.export_hollow_skin(aero_wing, output_step=skin_step_path)
+    cp.export_hollow_skin(aero_wing, output_step=skin_step_path)
     print(f'  -> Exported Hollow Wing Skin STEP to: {skin_step_path}')
 
     # ── 3. Generate unified structured FEM mesh ──
     print('\nExtracting Unified Structured FEM mesh (Gmsh)...')
     
-    mesher = fw.GmshMesher(target_elem_size=0.025, skin_elem_size=0.05)
+    mesher = cp.GmshMesher(target_elem_size=0.025, skin_elem_size=0.05)
     mesh_stats = mesher.mesh(
         webs_step_path, inp_path,
         skin_step=skin_step_path,
@@ -79,7 +79,7 @@ def main():
 
     # ── 4. Build CalculiX simulation deck ──
     print('\nBuilding CalculiX Simulation Deck...')
-    sim_path = fw.build_ccx_deck(
+    sim_path = cp.build_ccx_deck(
         mesh_inp=inp_path,
         web_properties=props,
         segments=segs,
@@ -88,11 +88,11 @@ def main():
 
     # ── 5. Run CalculiX solver & 6. Convert results ──
     print('\nRunning CalculiX solver...')
-    result = fw.run_ccx(sim_path, convert_vtu=True)
+    result = cp.run_ccx(sim_path, convert_vtu=True)
     
     # ── Visualize the 1D graph for reference ──
-    viz_fw = fw.Viz(wing)
-    fig = viz_fw.view3d(segs)
+    viz_fw = cp.Viz(wing)
+    fig = viz_cp.view3d(segs)
     fig.savefig(os.path.join(OUT, 'ex06_fem_graph.png'), dpi=150, bbox_inches='tight')
     plt.close(fig)
 

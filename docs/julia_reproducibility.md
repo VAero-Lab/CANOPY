@@ -27,7 +27,7 @@ Python environments often prepend virtual-env-specific paths to `LD_LIBRARY_PATH
 
 ### The Solution (Non-Intrusive)
 
-In the Python aerodynamic solver wrapper (`src/frond/aero_solver.py`), we explicitly isolate the subprocess environment by copying the parent environment and clearing `LD_LIBRARY_PATH`:
+In the Python aerodynamic solver wrapper (`src/canopy/aero_solver.py`), we explicitly isolate the subprocess environment by copying the parent environment and clearing `LD_LIBRARY_PATH`:
 
 ```python
 import os
@@ -69,7 +69,7 @@ When these control points are used to evaluate the influence coefficients of the
 
 ### The Bypass (Implemented in our Wrapper)
 
-Rather than forcing users to modify their global Julia package directories, we bypass the bug in `src/frond/solve_vortexlattice.jl` by manually resetting the ratios array to the correct defaults immediately after instantiation:
+Rather than forcing users to modify their global Julia package directories, we bypass the bug in `src/canopy/solve_vortexlattice.jl` by manually resetting the ratios array to the correct defaults immediately after instantiation:
 
 ```julia
 # solve_vortexlattice.jl (Bypass logic)

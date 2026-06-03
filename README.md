@@ -2,7 +2,7 @@
 
 A professional, modularized Python package for the generation of fractal tree-like structures for aerodynamic wing design. The package provides high-level versatility for structural optimization by implementing non-uniform station distribution laws, per-depth branching mode switching, per-branch thickness control, multi-trunk support, and automated self-intersection avoidance.
 
-**📖 Official Documentation:** [https://vaero-lab.github.io/FROND/](https://vaero-lab.github.io/FROND/)
+**📖 Official Documentation:** [https://vaero-lab.github.io/CANOPY/](https://vaero-lab.github.io/CANOPY/)
 
 ![Organic Zoned Design](docs/images/organic_zoned.png)
 
@@ -39,7 +39,7 @@ julia -e 'using Pkg; Pkg.add(["FLOWPanel", "VortexLattice", "WriteVTK", "JSON", 
 ## Quick Start
 
 ```python
-import frond as fw
+import canopy as fw
 from aeroshape.geometry.wings import MultiSegmentWing
 
 # 1. Provide an AeroShape MultiSegmentWing

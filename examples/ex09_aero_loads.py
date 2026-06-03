@@ -7,7 +7,7 @@ a CalculiX static structural analysis with the mapped aerodynamic loads.
 """
 
 import os
-import frond as fw
+import canopy as cp
 from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output_fem_aero')
@@ -23,17 +23,17 @@ def main():
     aero_wing, wing = get_base_wing(bm='full_wing')
 
     # Keep structural grid simple for quick meshing/simulation in this demo
-    stations = fw.make_mixed_stations(
+    stations = cp.make_mixed_stations(
         n_stations=6,
         diag_angle=35,
         chord_angle=75,
         diag_length=2.2,
         chord_length=1.5,
-        diag_sub=fw.SubParams(mode='sympodial', max_depth=2, min_length=0.1),
-        chord_sub=fw.SubParams(mode='dichotomous', max_depth=1, min_length=0.1)
+        diag_sub=cp.SubParams(mode='sympodial', max_depth=2, min_length=0.1),
+        chord_sub=cp.SubParams(mode='dichotomous', max_depth=1, min_length=0.1)
     )
 
-    spec = fw.TrunkSpec(
+    spec = cp.TrunkSpec(
         chord_frac=0.5,
         span_cov=1.0,
         thick=0.005,
@@ -41,7 +41,7 @@ def main():
         allow_crossing=False
     )
 
-    gen = fw.TreeGenerator(wing)
+    gen = cp.TreeGenerator(wing)
     segs = gen.generate(spec)
     print(f'   -> Generated {len(segs)} fractal segments.')
 
@@ -51,14 +51,14 @@ def main():
     skin_step_path = os.path.join(OUT, 'aero_skin.step')
     inp_path = os.path.join(OUT, 'aero_wing_mesh.inp')
 
-    assembly, props = fw.build_brep_webs(segs, aero_wing, as_solid=False, output_step=webs_step_path)
-    fw.export_hollow_skin(aero_wing, output_step=skin_step_path)
+    assembly, props = cp.build_brep_webs(segs, aero_wing, as_solid=False, output_step=webs_step_path)
+    cp.export_hollow_skin(aero_wing, output_step=skin_step_path)
     print(f'   -> Saved B-Rep files to {OUT}')
 
     # 3. Generate FEM mesh in Gmsh
     print('\n3. Generating FEM mesh with Gmsh...')
     # Use slightly coarser mesh sizes for demonstration speed
-    mesher = fw.GmshMesher(target_elem_size=0.05, skin_elem_size=0.075, skin_clustering=0.2)
+    mesher = cp.GmshMesher(target_elem_size=0.05, skin_elem_size=0.075, skin_clustering=0.2)
     mesh_stats = mesher.mesh(
         webs_step_path, inp_path,
         skin_step=skin_step_path,
@@ -73,7 +73,7 @@ def main():
     rho = 1.225          # Density (kg/m^3)
     
     # Run solver; debug=True will output a VTK surface mesh with Cps and forces
-    aero_data = fw.run_aerodynamic_analysis(
+    aero_data = cp.run_aerodynamic_analysis(
         wing=aero_wing,
         aoa=aoa,
         magVinf=velocity,
@@ -86,11 +86,11 @@ def main():
     
     # 5. Parse mesh for mapping and apply IDW load transfer
     print('\n5. Mapping aerodynamic panel forces onto FEM skin nodes...')
-    nodes, skin_nodes = fw.parse_mesh_for_mapping(inp_path)
+    nodes, skin_nodes = cp.parse_mesh_for_mapping(inp_path)
     print(f'   -> Total structural nodes: {len(nodes)}')
     print(f'   -> Skin structural nodes:  {len(skin_nodes)}')
     
-    mapped_forces = fw.map_aerodynamic_loads(
+    mapped_forces = cp.map_aerodynamic_loads(
         aero_centroids=aero_data["centroids"],
         aero_forces=aero_data["forces"],
         nodes_dict=nodes,
@@ -102,7 +102,7 @@ def main():
 
     # 6. Build CalculiX input deck with mapped loads
     print('\n6. Building CalculiX static structural simulation deck...')
-    sim_path = fw.build_ccx_deck(
+    sim_path = cp.build_ccx_deck(
         mesh_inp=inp_path,
         web_properties=props,
         segments=segs,
@@ -114,7 +114,7 @@ def main():
     print('\n7. Solving structural analysis (CalculiX)...')
     # NOTE: To visualize the deformation clearly in ParaView, apply the "Warp By Vector" 
     # filter and increase the scale factor, as 1mm CFRP is still very stiff.
-    ccx_results = fw.run_ccx(sim_path, convert_vtu=True)
+    ccx_results = cp.run_ccx(sim_path, convert_vtu=True)
     
     print('\n' + '='*70)
     print('  Aerodynamic Load Transfer & FEM Solve Complete!')

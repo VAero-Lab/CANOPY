@@ -422,10 +422,10 @@ class AeroStructuralOptimizer:
 
         if self.mode == "uncoupled" and self.mapped_loads is None:
             print("  [Optimizer] Running uncoupled baseline aerodynamic solve...")
-            import frond as fw
+            import canopy as cp
             self.mapped_loads = {}
             try:
-                coords = fw.extract_oml_grid(aero_wing, num_points_profile=40)
+                coords = cp.extract_oml_grid(aero_wing, num_points_profile=40)
                 aero_out = os.path.join(output_dir, "baseline_aero_loads.json")
                 aero_in = os.path.join(output_dir, "baseline_aero_input.json")
                 # Fallback to demo loads if FLOWPanel fails
@@ -456,7 +456,7 @@ class AeroStructuralOptimizer:
         self.iter_count += 1
         t0 = time.perf_counter()
 
-        import frond as fw
+        import canopy as cp
 
         zones, trunk_thick = self.mapper.vector_to_params(x)
 
@@ -483,15 +483,15 @@ class AeroStructuralOptimizer:
         with SilenceAndCaptureOutput(self.log_file):
             try:
                 # 1. Stations and segments
-                stations = fw.make_zoned_stations(n_stations=10, zones=zones)
-                spec = fw.TrunkSpec(
+                stations = cp.make_zoned_stations(n_stations=10, zones=zones)
+                spec = cp.TrunkSpec(
                     chord_frac=0.5,
                     span_cov=1.0,
                     thick=trunk_thick,
                     stations=stations,
                     allow_crossing=False,
                 )
-                gen = fw.TreeGenerator(self.wing)
+                gen = cp.TreeGenerator(self.wing)
                 segs = gen.generate(spec)
 
                 # Robust Segment Check: must have at least 3 segments
@@ -499,11 +499,11 @@ class AeroStructuralOptimizer:
                     raise ValueError(f"Too few segments generated: {len(segs)}")
 
                 # 2. STEP Export
-                assembly, props = fw.build_brep_webs(segs, self.aero_wing, as_solid=False, output_step=webs_step)
-                fw.export_hollow_skin(self.aero_wing, output_step=skin_step)
+                assembly, props = cp.build_brep_webs(segs, self.aero_wing, as_solid=False, output_step=webs_step)
+                cp.export_hollow_skin(self.aero_wing, output_step=skin_step)
 
                 # 3. Meshing (coarser target sizing for fast search optimization)
-                mesher = fw.GmshMesher(target_elem_size=0.15, skin_elem_size=0.25)
+                mesher = cp.GmshMesher(target_elem_size=0.15, skin_elem_size=0.25)
                 mesh_stats = mesher.mesh(
                     webs_step, mesh_inp,
                     skin_step=skin_step,
@@ -515,11 +515,11 @@ class AeroStructuralOptimizer:
                 if self.mode == "coupled":
                     aero_in = os.path.join(self.output_dir, f"{iter_name}_aero_input.json")
                     aero_out = os.path.join(self.output_dir, f"{iter_name}_aero_loads.json")
-                    coords = fw.extract_oml_grid(self.aero_wing, num_points_profile=40)
-                    fw.solve_flowpanel(self.aero_wing, coords, output_json=aero_out, input_json=aero_in)
+                    coords = cp.extract_oml_grid(self.aero_wing, num_points_profile=40)
+                    cp.solve_flowpanel(self.aero_wing, coords, output_json=aero_out, input_json=aero_in)
 
                 # 5. Build CCX Deck
-                sim_inp = fw.build_ccx_deck(
+                sim_inp = cp.build_ccx_deck(
                     mesh_inp=mesh_inp,
                     web_properties=props,
                     segments=segs,
@@ -588,7 +588,7 @@ class AeroStructuralOptimizer:
                     f_deck.write(deck_content)
 
                 # 6. Run ccx solver & postprocess inside SilenceAndCaptureOutput for perfect logs
-                res = fw.run_ccx(sim_inp, convert_vtu=False)
+                res = cp.run_ccx(sim_inp, convert_vtu=False)
 
                 if res["success"]:
                     displacements = parse_ccx_dat_displacements(sim_dat)

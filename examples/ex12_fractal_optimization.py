@@ -10,7 +10,7 @@ import os
 import shutil
 import json
 import numpy as np
-import frond as fw
+import canopy as cp
 from utils import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), "3D_wing_Opt")
@@ -51,14 +51,14 @@ def main():
             "chord_angle": 65.0,
             "diag_length": 3.0,
             "chord_length": 2.5,
-            "diag_sub": fw.SubParams(
+            "diag_sub": cp.SubParams(
                 mode=["sympodial", 'monopodial'],
                 max_depth=3,
                 angles=[30, 25, 20],
                 length_ratios=[0.6, 0.55, 0.5],
                 min_length=0.015,
             ),
-            "chord_sub": fw.SubParams(mode="dichotomous", max_depth=2),
+            "chord_sub": cp.SubParams(mode="dichotomous", max_depth=2),
             "thick_frac": 0.85,
         },
         {
@@ -68,8 +68,8 @@ def main():
             "chord_angle": 75.0,
             "diag_length": 1.8,
             "chord_length": 1.5,
-            "diag_sub": fw.SubParams(mode="monopodial", max_depth=2, min_length=0.02),
-            "chord_sub": fw.SubParams(mode="sympodial", max_depth=1),
+            "diag_sub": cp.SubParams(mode="monopodial", max_depth=2, min_length=0.02),
+            "chord_sub": cp.SubParams(mode="sympodial", max_depth=1),
             "thick_frac": 0.7,
         },
         {
@@ -79,8 +79,8 @@ def main():
             "chord_angle": None,
             "diag_length": 1.2,
             "chord_length": 0.8,
-            "diag_sub": fw.SubParams(mode="monochasium", max_depth=2, min_length=0.02),
-            "chord_sub": fw.SubParams(mode="dichotomous", max_depth=1),
+            "diag_sub": cp.SubParams(mode="monochasium", max_depth=2, min_length=0.02),
+            "chord_sub": cp.SubParams(mode="dichotomous", max_depth=1),
             "thick_frac": 0.5,
         },
     ]
@@ -91,7 +91,7 @@ def main():
     velocity = 30.0    # Freestream velocity (m/s)
     rho = 1.225        # Air density (kg/m^3)
 
-    aero_data = fw.run_aerodynamic_analysis(
+    aero_data = cp.run_aerodynamic_analysis(
         wing=aero_wing,
         aoa=aoa,
         magVinf=velocity,
@@ -105,15 +105,15 @@ def main():
     # ── 3. Parse baseline structural mesh for mapping ──
     print("\n3. Generating baseline mesh to map aerodynamic panel loads...")
     # First, generate baseline tree segments
-    baseline_stations = fw.make_zoned_stations(n_stations=10, zones=baseline_zones)
-    baseline_spec = fw.TrunkSpec(
+    baseline_stations = cp.make_zoned_stations(n_stations=10, zones=baseline_zones)
+    baseline_spec = cp.TrunkSpec(
         chord_frac=0.5,
         span_cov=1.0,
         thick=0.005,
         stations=baseline_stations,
         allow_crossing=False,
     )
-    baseline_gen = fw.TreeGenerator(wing)
+    baseline_gen = cp.TreeGenerator(wing)
     baseline_segs = baseline_gen.generate(baseline_spec)
 
     webs_step = os.path.join(OUT, "baseline_webs.step")
@@ -121,19 +121,19 @@ def main():
     mesh_inp = os.path.join(OUT, "baseline_mesh.inp")
 
     # B-Rep Step export
-    fw.build_brep_webs(baseline_segs, aero_wing, as_solid=False, output_step=webs_step)
-    fw.export_hollow_skin(aero_wing, output_step=skin_step)
+    cp.build_brep_webs(baseline_segs, aero_wing, as_solid=False, output_step=webs_step)
+    cp.export_hollow_skin(aero_wing, output_step=skin_step)
 
     # Structured quad meshing
-    mesher = fw.GmshMesher(target_elem_size=0.15, skin_elem_size=0.25)
+    mesher = cp.GmshMesher(target_elem_size=0.15, skin_elem_size=0.25)
     mesh_stats = mesher.mesh(
         webs_step, mesh_inp,
         skin_step=skin_step,
     )
 
     # Map baseline loads
-    nodes, skin_nodes = fw.parse_mesh_for_mapping(mesh_inp)
-    mapped_forces = fw.map_aerodynamic_loads(
+    nodes, skin_nodes = cp.parse_mesh_for_mapping(mesh_inp)
+    mapped_forces = cp.map_aerodynamic_loads(
         aero_centroids=aero_data["centroids"],
         aero_forces=aero_data["forces"],
         nodes_dict=nodes,
@@ -153,7 +153,7 @@ def main():
 
     # ── 4. Set up the AeroStructuralOptimizer ──
     print("\n4. Initializing AeroStructuralOptimizer...")
-    optimizer = fw.AeroStructuralOptimizer(
+    optimizer = cp.AeroStructuralOptimizer(
         aero_wing=aero_wing,
         wing=wing,
         baseline_zones=baseline_zones,

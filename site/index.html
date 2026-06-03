@@ -1,0 +1,1280 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Constructive Aerostructural Natural OPtimization of flYing structures">
+      
+      
+      
+      
+      
+        <link rel="next" href="examples/ex11/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>CANOPY Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#canopy-constructive-aerostructural-natural-optimization-of-flying-structures" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="CANOPY Documentation" class="md-header__button md-logo" aria-label="CANOPY Documentation" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            CANOPY Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/VAero-Lab/CANOPY" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    VAero-Lab/CANOPY
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="examples/ex11/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="api/generator/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="julia_reproducibility/" class="md-tabs__link">
+          
+  
+  
+  Advanced
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="CANOPY Documentation" class="md-nav__button md-logo" aria-label="CANOPY Documentation" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    CANOPY Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/VAero-Lab/CANOPY" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    VAero-Lab/CANOPY
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aerodynamic-solver-setup-julia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aerodynamic Solver Setup (Julia)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Optimization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#paraview-visualization-post-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParaView Visualization &amp; Post-Processing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ParaView Visualization &amp; Post-Processing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-solid-surface-aerodynamic-load-visualization-_panelsvtu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Solid-Surface Aerodynamic Load Visualization (_panels.vtu)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-isolated-beam-and-skin-post-processing-_beamsvtp-and-_skinvtu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Isolated Beam and Skin Post-Processing (_beams.vtp and _skin.vtu)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        License
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/ex11/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example 11 (2D Flapping Wing)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/ex09/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example 09 (3D Aero Loads)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/meshing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Meshing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/aero_solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aerodynamics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/fem_solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Structural FEM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="julia_reproducibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Julia Reproducibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aerodynamic-solver-setup-julia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aerodynamic Solver Setup (Julia)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Optimization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#paraview-visualization-post-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParaView Visualization &amp; Post-Processing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ParaView Visualization &amp; Post-Processing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-solid-surface-aerodynamic-load-visualization-_panelsvtu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Solid-Surface Aerodynamic Load Visualization (_panels.vtu)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-isolated-beam-and-skin-post-processing-_beamsvtp-and-_skinvtu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Isolated Beam and Skin Post-Processing (_beams.vtp and _skin.vtu)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        License
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="canopy-constructive-aerostructural-natural-optimization-of-flying-structures">CANOPY — Constructive Aerostructural Natural OPtimization of flYing structures</h1>
+<p>A Python package for the generation of fractal tree-like structures for aerodynamic wing design. The package provides high-level versatility for structural optimization by implementing non-uniform station distribution laws, per-depth branching mode switching, per-branch thickness control, multi-trunk support, and automated self-intersection avoidance.</p>
+<p><img alt="Organic Zoned Design" src="images/organic_zoned.png" /></p>
+<h2 id="features">Features</h2>
+<ul>
+<li><strong>Adaptive Branching Modes</strong>: Support for per-recursion-depth mode switching (e.g., transition from <em>sympodial</em> to <em>monopodial</em> deeper in the tree).</li>
+<li><strong>Non-Uniform Station Distribution</strong>: Provides geometric, cosine, power-law, bimodal, and custom spacing strategies.</li>
+<li><strong>Granular Branch Control</strong>: Per-branch thickness control and tunable recursion termination thresholds.</li>
+<li><strong>Multi-Trunk Support</strong>: Generate complex designs with multiple independent trunks while maintaining global crossing constraints.</li>
+<li><strong>AeroShape NURBS Integration</strong>: Directly query $C^2$-continuous aerodynamic surfaces to restrict fractal growth perfectly within real CAD boundaries.</li>
+<li><strong>Fully Structured Hybrid Meshing</strong>: Generates high-fidelity structured Quad (S4) shell meshes using Gmsh. Features independent, topologically locked wing skin meshing and perfectly conformal internal web fragment meshing.</li>
+<li><strong>CalculiX &amp; ParaView Integration</strong>: Fully automated FEM pipeline that builds simulation decks, establishes rigorous mathematically-exact <strong>Node-to-Node MPCs</strong> (Multi-Point Constraints) for contact without brittle tolerances, applies boundary conditions, solves the structural response, and converts results to <code>.vtu</code> format for ParaView visualization.</li>
+<li><strong>Integrated 3D Panel Aerodynamics</strong>: Native coupling with <code>FLOWPanel.jl</code> (Julia) to run ultra-fast 3D panel method calculations over the wing's OML structured grid. Automatically maps distributed aerodynamic forces onto structural skin nodes using Inverse Distance Weighting (IDW) while mathematically conserving total force and moment resultant vectors.</li>
+</ul>
+<h2 id="installation">Installation</h2>
+<p>The package can be installed in editable mode using <code>pip</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>&lt;repository_url&gt;
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>fractal_structures_wing
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>pip<span class="w"> </span>install<span class="w"> </span>gmsh<span class="w">  </span><span class="c1"># Required for FEM meshing</span>
+</span></code></pre></div>
+<h3 id="aerodynamic-solver-setup-julia">Aerodynamic Solver Setup (Julia)</h3>
+<p>The aerodynamic features require a standard Julia installation. <strong>No modifications are made to any external Julia libraries.</strong> You can install the required official packages directly:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>julia<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;using Pkg; Pkg.add([&quot;FLOWPanel&quot;, &quot;VortexLattice&quot;, &quot;WriteVTK&quot;, &quot;JSON&quot;, &quot;StaticArrays&quot;])&#39;</span>
+</span></code></pre></div>
+<p><em>(This will automatically download and install <code>FLOWPanel.jl</code>, <code>VortexLattice.jl</code>, and standard IO packages in your default global environment or your active project environment.)</em></p>
+<h2 id="quick-start">Quick Start</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">canopy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fw</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aeroshape.geometry.wings</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiSegmentWing</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># 1. Provide an AeroShape MultiSegmentWing</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">aero_wing</span> <span class="o">=</span> <span class="n">MultiSegmentWing</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># 2. Wrap it with the Adapter</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">wing</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">AeroWingAdapter</span><span class="p">(</span><span class="n">aero_wing</span><span class="p">)</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># 3. Configure spanwise-zoned branching behavior</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">zones</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="p">{</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        <span class="s1">&#39;eta_start&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;eta_end&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        <span class="s1">&#39;diag_sub&#39;</span><span class="p">:</span> <span class="n">fw</span><span class="o">.</span><span class="n">SubParams</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;sympodial&#39;</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        <span class="s1">&#39;chord_sub&#39;</span><span class="p">:</span> <span class="n">fw</span><span class="o">.</span><span class="n">SubParams</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;dichotomous&#39;</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    <span class="p">},</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    <span class="p">{</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        <span class="s1">&#39;eta_start&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span> <span class="s1">&#39;eta_end&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        <span class="s1">&#39;diag_sub&#39;</span><span class="p">:</span> <span class="n">fw</span><span class="o">.</span><span class="n">SubParams</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;monopodial&#39;</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        <span class="s1">&#39;chord_sub&#39;</span><span class="p">:</span> <span class="n">fw</span><span class="o">.</span><span class="n">SubParams</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;sympodial&#39;</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="p">}</span>
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="p">]</span>
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="c1"># 4. Create station distribution and generate segments</span>
+</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="n">stations</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">make_zoned_stations</span><span class="p">(</span><span class="n">n_stations</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">zones</span><span class="o">=</span><span class="n">zones</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="s1">&#39;geometric&#39;</span><span class="p">)</span>
+</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="n">spec</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">TrunkSpec</span><span class="p">(</span><span class="n">chord_frac</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">stations</span><span class="o">=</span><span class="n">stations</span><span class="p">,</span> <span class="n">allow_crossing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="n">gen</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">TreeGenerator</span><span class="p">(</span><span class="n">wing</span><span class="p">)</span>
+</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="n">segments</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="c1"># 5. Export CAD B-Rep Shells to STEP</span>
+</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="n">step_path</span> <span class="o">=</span> <span class="s2">&quot;fractal_mesh_shell.step&quot;</span>
+</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="n">assembly</span><span class="p">,</span> <span class="n">props</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">build_brep_webs</span><span class="p">(</span><span class="n">segments</span><span class="p">,</span> <span class="n">aero_wing</span><span class="p">,</span> <span class="n">as_solid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">output_step</span><span class="o">=</span><span class="n">step_path</span><span class="p">)</span>
+</span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
+</span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="c1"># 6. Extract Structured FEM Mesh directly from STEP using Gmsh</span>
+</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="c1"># You can define independent element sizes for the skin and webs to reduce total element count</span>
+</span><span id="__span-2-36"><a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="n">mesher</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">GmshMesher</span><span class="p">(</span><span class="n">target_elem_size</span><span class="o">=</span><span class="mf">0.025</span><span class="p">,</span> <span class="n">skin_elem_size</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+</span><span id="__span-2-37"><a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">mesher</span><span class="o">.</span><span class="n">mesh</span><span class="p">(</span><span class="n">step_path</span><span class="p">,</span> <span class="s2">&quot;fractal_mesh.inp&quot;</span><span class="p">,</span> <span class="n">skin_step</span><span class="o">=</span><span class="n">skin_step_path</span><span class="p">,</span> <span class="n">web_properties</span><span class="o">=</span><span class="n">props</span><span class="p">)</span>
+</span><span id="__span-2-38"><a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>
+</span><span id="__span-2-39"><a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="c1"># 7. Run 3D Panel Aerodynamic Analysis (FLOWPanel.jl)</span>
+</span><span id="__span-2-40"><a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="n">aero_data</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">run_aerodynamic_analysis</span><span class="p">(</span>
+</span><span id="__span-2-41"><a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>    <span class="n">wing</span><span class="o">=</span><span class="n">aero_wing</span><span class="p">,</span>
+</span><span id="__span-2-42"><a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>    <span class="n">aoa</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>
+</span><span id="__span-2-43"><a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>    <span class="n">magVinf</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
+</span><span id="__span-2-44"><a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>    <span class="n">rho</span><span class="o">=</span><span class="mf">1.225</span>
+</span><span id="__span-2-45"><a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="p">)</span>
+</span><span id="__span-2-46"><a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>
+</span><span id="__span-2-47"><a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="c1"># 8. Map aerodynamic panel forces onto structural skin nodes</span>
+</span><span id="__span-2-48"><a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="n">nodes</span><span class="p">,</span> <span class="n">skin_nodes</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">parse_mesh_for_mapping</span><span class="p">(</span><span class="s2">&quot;fractal_mesh.inp&quot;</span><span class="p">)</span>
+</span><span id="__span-2-49"><a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="n">mapped_forces</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">map_aerodynamic_loads</span><span class="p">(</span>
+</span><span id="__span-2-50"><a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a>    <span class="n">aero_centroids</span><span class="o">=</span><span class="n">aero_data</span><span class="p">[</span><span class="s2">&quot;centroids&quot;</span><span class="p">],</span>
+</span><span id="__span-2-51"><a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a>    <span class="n">aero_forces</span><span class="o">=</span><span class="n">aero_data</span><span class="p">[</span><span class="s2">&quot;forces&quot;</span><span class="p">],</span>
+</span><span id="__span-2-52"><a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a>    <span class="n">nodes_dict</span><span class="o">=</span><span class="n">nodes</span><span class="p">,</span>
+</span><span id="__span-2-53"><a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a>    <span class="n">skin_node_ids</span><span class="o">=</span><span class="n">skin_nodes</span>
+</span><span id="__span-2-54"><a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a><span class="p">)</span>
+</span><span id="__span-2-55"><a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a>
+</span><span id="__span-2-56"><a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a><span class="c1"># 9. Build simulation deck with mapped aerodynamic loads &amp; Run CalculiX</span>
+</span><span id="__span-2-57"><a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a><span class="n">sim_path</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">build_ccx_deck</span><span class="p">(</span>
+</span><span id="__span-2-58"><a id="__codelineno-2-58" name="__codelineno-2-58" href="#__codelineno-2-58"></a>    <span class="n">mesh_inp</span><span class="o">=</span><span class="s2">&quot;fractal_mesh.inp&quot;</span><span class="p">,</span>
+</span><span id="__span-2-59"><a id="__codelineno-2-59" name="__codelineno-2-59" href="#__codelineno-2-59"></a>    <span class="n">web_properties</span><span class="o">=</span><span class="n">props</span><span class="p">,</span>
+</span><span id="__span-2-60"><a id="__codelineno-2-60" name="__codelineno-2-60" href="#__codelineno-2-60"></a>    <span class="n">segments</span><span class="o">=</span><span class="n">segments</span><span class="p">,</span>
+</span><span id="__span-2-61"><a id="__codelineno-2-61" name="__codelineno-2-61" href="#__codelineno-2-61"></a>    <span class="n">skin_thickness</span><span class="o">=</span><span class="mf">0.003</span><span class="p">,</span>
+</span><span id="__span-2-62"><a id="__codelineno-2-62" name="__codelineno-2-62" href="#__codelineno-2-62"></a>    <span class="n">mapped_aero_forces</span><span class="o">=</span><span class="n">mapped_forces</span>
+</span><span id="__span-2-63"><a id="__codelineno-2-63" name="__codelineno-2-63" href="#__codelineno-2-63"></a><span class="p">)</span>
+</span><span id="__span-2-64"><a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a>
+</span><span id="__span-2-65"><a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a><span class="c1"># 10. Run solver with automatic parallelism &amp; convert results to VTU</span>
+</span><span id="__span-2-66"><a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a><span class="n">result</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">run_ccx</span><span class="p">(</span><span class="n">sim_path</span><span class="p">,</span> <span class="n">convert_vtu</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-2-67"><a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Solver finished in </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;elapsed_s&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="performance-optimization">Performance Optimization</h2>
+<p>The FEM pipeline has been optimized to handle complex organic fractal meshes efficiently:</p>
+<ul>
+<li><strong>Parallel Assembly</strong>: <code>run_ccx</code> automatically detects your CPU cores and sets <code>CCX_NPROC_STIFFNESS</code> and <code>OMP_NUM_THREADS</code> to parallelize stiffness matrix assembly and results calculation.</li>
+<li><strong>Fast I/O</strong>: <code>build_ccx_deck</code> defaults to a mixed binary/ASCII <code>.frd</code> format (<code>*NODE OUTPUT</code>), reducing result file sizes by ~40% and accelerating disk I/O. Set <code>binary_output=False</code> when using <code>ccx2paraview</code>.</li>
+<li><strong>Fast Parsing</strong>: The Python-based <code>.inp</code> parser is vectorized via NumPy, allowing million-line mesh files to be processed in seconds.</li>
+<li><strong>Multi-threaded Meshing</strong>: <code>GmshMesher</code> configures the OpenCASCADE kernel and Frontal-Delaunay algorithms to utilize all available CPU threads.</li>
+<li><strong>Topological Robustness</strong>: The CAD pipeline includes a dynamic Trailing Edge web retraction algorithm (<code>build_brep_webs</code>). If an internal branch converges to the mathematically sharp trailing edge of the wing (creating a degenerate 3-edged triangle), the web's tip is automatically pulled inward by 2% of its length. This ensures the FEM solver receives 100% 4-sided quadrilaterals while allowing nearest-neighbor multi-point constraints (<code>cKDTree</code>) to seamlessly transfer loads to the trailing edge skin.</li>
+</ul>
+<h2 id="examples">Examples</h2>
+<p>The <code>examples/</code> directory contains demonstration scripts covering core capabilities:</p>
+<ul>
+<li><code>ex01_basic_modes.py</code>: Demonstrates the 4 main branching modes independently.</li>
+<li><code>ex02_mixed_mode.py</code>: Shows combination of structural modes.</li>
+<li><code>ex03_non_uniform_spacing.py</code>: Compares different distribution laws (uniform vs. non-uniform).</li>
+<li><code>ex04_organic_structures.py</code>: Synthesizes deep tree-like structures with graded parameters.</li>
+<li><code>ex05_crossing_control.py</code>: Demonstrates the self-intersection pruning logic (<code>allow_crossing</code>).</li>
+<li><code>ex06_fem_export.py</code>: Extracts exact mathematical topology via OpenCASCADE and generates a Gmsh structured mesh for CalculiX, executing the full simulation pipeline.</li>
+<li><code>ex07_aeroshape_integration.py</code>: Demonstrates CAD boolean operations with AeroShape NURBS models.</li>
+<li><code>ex08_fem_organic.py</code>: End-to-end FEM simulation for a dense, spanwise-zoned organic fractal structure with multiple distributed point loads.</li>
+<li><code>ex09_aero_loads.py</code>: Full end-to-end multi-disciplinary design and analysis (MDA) loop coupling planform generation, CAD STEP export, Gmsh meshing, FLOWPanel.jl 3D aerodynamic panel solve, IDW load transfer with resultant conservation checks, and clamped CalculiX structural static analysis solve.</li>
+<li><code>ex10_aero_mesh_dependency.py</code>: Aerodynamic mesh dependency study showing grid convergence of Lift and Drag coefficients as the chordwise and spanwise panel densities are systematically refined.</li>
+<li><code>ex11_2d_flapping_wing.py</code>: Full aero-structural analysis of a 2D wing with flapping kinematics using a custom VortexLattice.jl aerodynamic solver, 1D beam discretization for internal webs, and multi-point tie constraint FEM coupling.</li>
+</ul>
+<h2 id="paraview-visualization-post-processing">ParaView Visualization &amp; Post-Processing</h2>
+<p>To overcome standard limitations with mixed-element meshes and wireframe rendering in ParaView, the solver automatically post-processes results into specialized formats:</p>
+<h3 id="1-solid-surface-aerodynamic-load-visualization-_panelsvtu">1. Solid-Surface Aerodynamic Load Visualization (<code>_panels.vtu</code>)</h3>
+<p>Instead of displaying bound vortex filaments as colored wireframe edges (the default VortexLattice.jl behavior), the solver generates a dedicated <code>&lt;vtk_prefix&gt;_panels.vtu</code> mesh:</p>
+<ul>
+<li>Combines grid coordinates into solid 2D <code>VTK_QUAD</code> cells.</li>
+<li>Binds aerodynamic variables (<code>circulation</code>, <code>force_magnitude</code>, <code>force_x</code>, <code>force_y</code>, <code>force_z</code>) as <strong>cell-centered data</strong>.</li>
+<li><strong>ParaView Usage</strong>: Open the file, change the <strong>Representation</strong> from <em>Outline</em> to <strong>Surface</strong>, and choose the desired color variable to view a smooth, continuous load distribution.</li>
+</ul>
+<h3 id="2-isolated-beam-and-skin-post-processing-_beamsvtp-and-_skinvtu">2. Isolated Beam and Skin Post-Processing (<code>_beams.vtp</code> and <code>_skin.vtu</code>)</h3>
+<p>Because CalculiX outputs a single mixed-type mesh, standard ParaView filters (like the <strong>Tube</strong> filter for beam members) are disabled. The solver automatically splits the output mesh file:</p>
+<ul>
+<li><strong><code>*_beams.vtp</code></strong>: Isolates all 1D beam elements (<code>B31</code>/<code>B32</code>) as standard 1D lines in a true PolyData format, preserving simulation results (<code>U</code>, <code>S</code>, <code>S_Mises</code>). Crucially, it parses the actual physical beam radius from the <code>.inp</code> deck and stores it as a <code>TubeRadius</code> point-data array.</li>
+<li><strong>ParaView Usage</strong>: Load this file, select it, apply the <strong>Tube</strong> filter, set <em>Vary Radius</em> to <strong>By Absolute Scalar</strong>, and select <strong>TubeRadius</strong> to visualize the structure with its true, variable physical dimensions.</li>
+<li><strong><code>*_skin.vtu</code></strong>: Isolates all 2D shell elements (<code>S3</code>/<code>S4</code>) and contains their 3D-extruded volumetric representations.</li>
+</ul>
+<h2 id="license">License</h2>
+<p>This project is licensed under the MIT License - see the <a href="LICENSE">LICENSE</a> file for details.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

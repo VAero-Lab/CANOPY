@@ -336,11 +336,32 @@ def build_ccx_deck(
         w_coords = np.array([nodes[n] for n in w_nodes_list if n in nodes])
 
         if len(w_coords) == len(w_nodes_list):
-            _, indices = skin_tree.query(w_coords, k=1)
+            # Query the 10 closest nodes to allow finding an unused one
+            _, indices = skin_tree.query(w_coords, k=10)
+            
+            used_skin_nodes = set()
             for i in range(len(w_nodes_list)):
                 web_n = w_nodes_list[i]
-                skin_n = skin_nodes_list[indices[i]]
-                mpc_equations.append((web_n, skin_n))
+                tied = False
+                # Iterate through the k=10 closest skin nodes
+                for idx in indices[i]:
+                    skin_n = skin_nodes_list[idx]
+                    if skin_n not in used_skin_nodes:
+                        used_skin_nodes.add(skin_n)
+                        mpc_equations.append((web_n, skin_n))
+                        tied = True
+                        break
+                
+                # If we couldn't find an unused one in the top 10, fallback to finding the absolute closest unused
+                if not tied:
+                    dists = np.linalg.norm(skin_coords - w_coords[i], axis=1)
+                    sorted_all = np.argsort(dists)
+                    for idx in sorted_all:
+                        skin_n = skin_nodes_list[idx]
+                        if skin_n not in used_skin_nodes:
+                            used_skin_nodes.add(skin_n)
+                            mpc_equations.append((web_n, skin_n))
+                            break
 
     # ── Compute per-web orientation vectors ──
     web_orientations = {}
@@ -506,7 +527,7 @@ def build_ccx_deck(
         lines.append('** ═══════════════════════════════════════════')
         lines.append('** Tying web boundary nodes to nearest skin nodes')
         for web_n, skin_n in mpc_equations:
-            for dof in range(1, 7):
+            for dof in range(1, 4):  # ONLY tie translational DOFs (1, 2, 3)!
                 lines.append('*EQUATION')
                 lines.append('2')
                 lines.append(f'{web_n}, {dof}, 1.0, {skin_n}, {dof}, -1.0')

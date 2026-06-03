@@ -191,52 +191,15 @@ class GmshMesher:
             # Rule B: Wing Skin (0 vertical edges, 4 boundary edges forming a
             # loop)
             elif len(v_tags) == 0 and len(bnd) == 4:
-                # bnd is ordered along the loop. 0 and 2 are opposite, 1 and 3
-                # are opposite.
                 edges = [abs(t) for _, t in bnd]
-                l0 = gmsh.model.occ.getMass(1, edges[0])
-                l1 = gmsh.model.occ.getMass(1, edges[1])
-                l2 = gmsh.model.occ.getMass(1, edges[2])
-                l3 = gmsh.model.occ.getMass(1, edges[3])
+                if len(edges) == 4:
+                    # Transfinite curve constraints commented out to avoid "5 corner" errors
+                    pass
 
-                nx02 = max(1, int(round(((l0 + l2) / 2.0) / self.skin_size)))
-                nx13 = max(1, int(round(((l1 + l3) / 2.0) / self.skin_size)))
-
-                # Identify which pair is chordwise (the ones with smaller
-                # bounding box Y-span)
-                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(
-                    1, edges[0])
-                dy0 = ymax - ymin
-                xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.occ.getBoundingBox(
-                    1, edges[1])
-                dy1 = ymax - ymin
-
-                is_02_chordwise = dy0 < dy1
-
-                if is_02_chordwise:
-                    ctype_02, coef_02 = (
-                        "Bump", self.skin_clustering) if self.skin_clustering != 1.0 else (
-                        "Progression", 1.0)
-                    ctype_13, coef_13 = "Progression", 1.0
-                else:
-                    ctype_02, coef_02 = "Progression", 1.0
-                    ctype_13, coef_13 = (
-                        "Bump", self.skin_clustering) if self.skin_clustering != 1.0 else (
-                        "Progression", 1.0)
-
-                gmsh.model.mesh.setTransfiniteCurve(
-                    edges[0], nx02 + 1, ctype_02, coef_02)
-                gmsh.model.mesh.setTransfiniteCurve(
-                    edges[2], nx02 + 1, ctype_02, coef_02)
-                gmsh.model.mesh.setTransfiniteCurve(
-                    edges[1], nx13 + 1, ctype_13, coef_13)
-                gmsh.model.mesh.setTransfiniteCurve(
-                    edges[3], nx13 + 1, ctype_13, coef_13)
-
-            try:
-                gmsh.model.mesh.setTransfiniteSurface(tag)
-            except Exception:
-                pass
+            # try:
+            #     gmsh.model.mesh.setTransfiniteSurface(tag)
+            # except Exception:
+            #     pass
 
             gmsh.model.mesh.setRecombine(dim, tag)
 

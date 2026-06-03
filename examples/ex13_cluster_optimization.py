@@ -1,5 +1,5 @@
 """
-Example 12 — Parametric Fractal Wing Optimization
+Example 13 — Cluster-Ready Fractal Wing Optimization
 ==================================================
 Demonstrates how to optimize the continuous geometric parameters of an internal
 fractal web network to minimize structural compliance under steady aerodynamic
@@ -33,9 +33,8 @@ def clean_output_dir(out_dir):
 
 
 def main():
-    clean_output_dir(OUT)
     print("=" * 75)
-    print("  Example 12 — Parametric Fractal Wing Optimization")
+    print("  Example 13 — Cluster-Ready Fractal Wing Optimization")
     print("=" * 75)
 
     # ── 1. Planform & Baseline Zoned organic fractal topology ──
@@ -85,71 +84,22 @@ def main():
         },
     ]
 
-    # ── 2. Run baseline flow solve once & Map loads (Uncoupled Mode) ──
-    print("\n2. Pre-calculating steady aerodynamic loads on baseline wing...")
-    aoa = 4.0          # Angle of Attack (deg)
-    velocity = 30.0    # Freestream velocity (m/s)
-    rho = 1.225        # Air density (kg/m^3)
-
-    aero_data = fw.run_aerodynamic_analysis(
-        wing=aero_wing,
-        aoa=aoa,
-        magVinf=velocity,
-        rho=rho,
-        num_points_profile=40,
-        num_points_spanwise=15,
-        debug=True,
-        temp_dir=OUT,
-    )
-
-    # ── 3. Parse baseline structural mesh for mapping ──
-    print("\n3. Generating baseline mesh to map aerodynamic panel loads...")
-    # First, generate baseline tree segments
-    baseline_stations = fw.make_zoned_stations(n_stations=10, zones=baseline_zones)
-    baseline_spec = fw.TrunkSpec(
-        chord_frac=0.5,
-        span_cov=1.0,
-        thick=0.005,
-        stations=baseline_stations,
-        allow_crossing=False,
-    )
-    baseline_gen = fw.TreeGenerator(wing)
-    baseline_segs = baseline_gen.generate(baseline_spec)
-
-    webs_step = os.path.join(OUT, "baseline_webs.step")
-    skin_step = os.path.join(OUT, "baseline_skin.step")
-    mesh_inp = os.path.join(OUT, "baseline_mesh.inp")
-
-    # B-Rep Step export
-    fw.build_brep_webs(baseline_segs, aero_wing, as_solid=False, output_step=webs_step)
-    fw.export_hollow_skin(aero_wing, output_step=skin_step)
-
-    # Structured quad meshing
-    mesher = fw.GmshMesher(target_elem_size=0.15, skin_elem_size=0.25)
-    mesh_stats = mesher.mesh(
-        webs_step, mesh_inp,
-        skin_step=skin_step,
-    )
-
-    # Map baseline loads
-    nodes, skin_nodes = fw.parse_mesh_for_mapping(mesh_inp)
-    mapped_forces = fw.map_aerodynamic_loads(
-        aero_centroids=aero_data["centroids"],
-        aero_forces=aero_data["forces"],
-        nodes_dict=nodes,
-        skin_node_ids=skin_nodes,
-        num_neighbors=4,
-        power=2.0,
-    )
-    
-    # Save the mapped loads for cluster execution (ex13)
-    # Convert numpy arrays to lists for JSON serialization
-    serializable_loads = {str(k): v.tolist() for k, v in mapped_forces.items()}
+    # ── 2. Load Pre-calculated Aerodynamic Loads ──
+    print("\n2. Loading steady aerodynamic loads from baseline JSON...")
     loads_file = os.path.join(OUT, "baseline_aero_loads.json")
-    with open(loads_file, "w") as f:
-        json.dump(serializable_loads, f, indent=4)
-    print(f"   -> Distributed panel loads to {len(mapped_forces)} skin nodes.")
-    print(f"   -> Saved mapped loads to {loads_file}")
+    
+    if not os.path.exists(loads_file):
+        raise FileNotFoundError(
+            f"Could not find {loads_file}. Please run ex12_fractal_optimization.py "
+            "first to generate the baseline aerodynamic loads."
+        )
+        
+    with open(loads_file, "r") as f:
+        serializable_loads = json.load(f)
+        
+    # Convert string keys back to integers and lists back to numpy arrays
+    mapped_forces = {int(k): np.array(v) for k, v in serializable_loads.items()}
+    print(f"   -> Loaded distributed panel loads for {len(mapped_forces)} skin nodes.")
 
     # ── 4. Set up the AeroStructuralOptimizer ──
     print("\n4. Initializing AeroStructuralOptimizer...")
@@ -164,15 +114,14 @@ def main():
         skin_thickness=0.003,          # 3mm skin thickness
     )
 
-    # ── 5. Run Verification Optimization (35 COBYLA evaluations) ──
-    print("\n5. Running verification iterations (method='COBYLA', max_iter=35)...")
+    # ── 4. Run Cluster Optimization (e.g. Differential Evolution) ──
+    print("\n4. Running full cluster optimization (method='DE')...")
     print("-" * 75)
     
-    # Run the COBYLA solver for 35 test iterations to check execution convergence
-    results = optimizer.optimize(method="SLSQP", max_iter=100)
-    
+    # Run the DE solver for robust global optimization
+    results = optimizer.optimize(method="differential_evolution", max_iter=20, pop_size=5)
     print("-" * 75)
-    print("Verification iterations completed successfully!")
+    print("Cluster optimization completed successfully!")
     print(f"  Total solver calls: {results['iterations']}")
     print(f"  History trace written to: {optimizer.history_csv}")
     print(f"  Saved baseline/final structures to: {OUT}")

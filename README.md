@@ -131,7 +131,8 @@ The `examples/` directory contains demonstration scripts covering core capabilit
 - `ex09_aero_loads.py`: Full end-to-end multi-disciplinary design and analysis (MDA) loop coupling planform generation, CAD STEP export, Gmsh meshing, FLOWPanel.jl 3D aerodynamic panel solve, IDW load transfer with resultant conservation checks, and clamped CalculiX structural static analysis solve.
 - `ex10_aero_mesh_dependency.py`: Aerodynamic mesh dependency study showing grid convergence of Lift and Drag coefficients as the chordwise and spanwise panel densities are systematically refined.
 - `ex11_2d_flapping_wing.py`: Full aero-structural analysis of a 2D wing with flapping kinematics using a custom VortexLattice.jl aerodynamic solver, 1D beam discretization for internal webs, and multi-point tie constraint FEM coupling.
-
+- `ex12_fractal_optimization.py`: Full multi-disciplinary design optimization (MDO) evaluating the objective function and minimizing compliance by dynamically rebuilding the internal fractal B-Rep step models. Calculates baseline aerodynamic loads and exports them to JSON.
+- `ex13_cluster_optimization.py`: Cluster-ready global optimization (e.g. using Differential Evolution). Pre-loads aerodynamic forces directly from `baseline_aero_loads.json` bypassing all Julia/FLOWPanel.jl dependency for headless, isolated high-performance structural optimization runs.
 ## ParaView Visualization & Post-Processing
 
 To overcome standard limitations with mixed-element meshes and wireframe rendering in ParaView, the solver automatically post-processes results into specialized formats:
@@ -147,6 +148,14 @@ Because CalculiX outputs a single mixed-type mesh, standard ParaView filters (li
 - **`*_beams.vtp`**: Isolates all 1D beam elements (`B31`/`B32`) as standard 1D lines in a true PolyData format, preserving simulation results (`U`, `S`, `S_Mises`). Crucially, it parses the actual physical beam radius from the `.inp` deck and stores it as a `TubeRadius` point-data array.
   - **ParaView Usage**: Load this file, select it, apply the **Tube** filter, set *Vary Radius* to **By Absolute Scalar**, and select **TubeRadius** to visualize the structure with its true, variable physical dimensions.
 - **`*_skin.vtu`**: Isolates all 2D shell elements (`S3`/`S4`) and contains their 3D-extruded volumetric representations.
+
+## Cluster Execution (No Julia Required)
+
+For High Performance Computing (HPC) cluster deployments where installing Julia and aerodynamic packages like `FLOWPanel.jl` may be restricted or complex, this package supports a split-execution workflow:
+
+1. **Local Setup (`ex12_fractal_optimization.py`)**: Run this script once on your local machine. It uses Julia to evaluate the complex 3D aerodynamic loads on the baseline wing planform, maps them to the structured skin mesh, and permanently saves these exact resultant forces to `3D_wing_Opt/baseline_aero_loads.json`.
+2. **Cluster Upload**: Upload the `fractal_structures_wing` codebase and the newly generated `baseline_aero_loads.json` file to the cluster.
+3. **Headless Execution (`ex13_cluster_optimization.py`)**: Execute this script on your cluster. It is configured to automatically ingest the JSON file for structural mapping and executes the global optimization algorithms (e.g. `differential_evolution` or `COBYLA`) strictly through Python and `CalculiX` without ever invoking Julia.
 
 ## License
 

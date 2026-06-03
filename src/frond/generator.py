@@ -14,6 +14,10 @@ from __future__ import annotations
 
 import numpy as np
 from typing import List
+import shapely
+from shapely.geometry import LineString, Point
+from shapely import set_precision
+from shapely.ops import unary_union
 
 from .aeroshape_adapter import AeroWingAdapter
 from .structures import Seg, TrunkSpec, segments_cross
@@ -47,6 +51,9 @@ class TreeGenerator:
         self._id = 0
         self._allow_crossing = spec.allow_crossing
         self._generate_trunk(spec)
+        # Compute dynamic relative tolerance based on wing dimensions
+        tol = self.w.b * 1e-4
+        self.segs = clean_topology(self.segs, tol)
         return self.segs
 
     def generate_multi(self, specs: List[TrunkSpec]) -> List[Seg]:
@@ -71,6 +78,9 @@ class TreeGenerator:
         for spec in specs:
             self._allow_crossing = spec.allow_crossing
             self._generate_trunk(spec)
+        
+        tol = self.w.b * 1e-4
+        self.segs = clean_topology(self.segs, tol)
         return self.segs
 
     def stats(self) -> dict:
@@ -252,6 +262,60 @@ class TreeGenerator:
                 ]),
                 cl * 0.8, ct * tr, level + 1, sub, depth + 1,
             )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Topology Cleanup
+# ─────────────────────────────────────────────────────────────────
+
+def clean_topology(segs: List[Seg], tol: float) -> List[Seg]:
+    """
+    Cleans up the topological graph by snapping near-miss nodes, splitting
+    intersections, and culling micro-segments. Eliminates CAD brittleness.
+    """
+    if not segs:
+        return []
+        
+    lines = []
+    for s in segs:
+        l = LineString([s.p0, s.p1])
+        # Snap coordinates to a grid of size `tol`
+        l_grid = set_precision(l, grid_size=tol)
+        if l_grid.length >= tol:
+            lines.append(l_grid)
+            
+    if not lines:
+        return []
+
+    # Node the graph (intersect and split automatically)
+    noded = unary_union(lines)
+    
+    if isinstance(noded, LineString):
+        out_lines = [noded]
+    else:
+        out_lines = list(noded.geoms)
+
+    cleaned_segs = []
+    for l in out_lines:
+        if l.length < tol:
+            continue
+            
+        mid = l.interpolate(0.5, normalized=True)
+        best_seg = None
+        best_dist = float('inf')
+        
+        for s in segs:
+            orig_l = LineString([s.p0, s.p1])
+            d = orig_l.distance(mid)
+            if d < best_dist:
+                best_dist = d
+                best_seg = s
+                
+        if best_seg:
+            c0, c1 = l.coords[0], l.coords[-1]
+            cleaned_segs.append(Seg(np.array(c0), np.array(c1), best_seg.thick, best_seg.level, best_seg.sid))
+
+    return cleaned_segs
 
 
 # ─────────────────────────────────────────────────────────────────

@@ -80,7 +80,7 @@ def parse_ccx_dat_displacements(dat_path: str) -> dict[int, list[float]]:
         if "displacements" in stripped.lower() and ("node" in stripped.lower() or "set" in stripped.lower()):
             in_displacements = True
             continue
-        if in_displacements and stripped.startswith("*"):
+        if in_displacements and (stripped.startswith("*") or "stresses" in stripped.lower()):
             in_displacements = False
             continue
         if in_displacements:

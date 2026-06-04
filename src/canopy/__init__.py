@@ -35,7 +35,9 @@ from .meshing import GmshMesher
 from .fem_solver import build_ccx_deck, parse_mesh_for_mapping
 from .run_utils import run_ccx
 from .aero_solver import run_aerodynamic_analysis, map_aerodynamic_loads
-from .optimization import AeroStructuralOptimizer, FractalParameterMapper
+from .optimization import AeroStructuralOptimizer
+from .geometry_utils import get_base_wing
+from .optimization_plots import OptimizationPostProcessor
 
 __all__ = [
     'AeroWingAdapter',
@@ -60,7 +62,8 @@ __all__ = [
     'run_aerodynamic_analysis',
     'map_aerodynamic_loads',
     'AeroStructuralOptimizer',
-    'FractalParameterMapper',
+    'get_base_wing',
+    'OptimizationPostProcessor',
 ]
 
 __version__ = "0.2.0"

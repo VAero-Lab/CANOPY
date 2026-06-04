@@ -8,7 +8,7 @@ a CalculiX static structural analysis with the mapped aerodynamic loads.
 
 import os
 import canopy as cp
-from utils import get_base_wing
+from canopy import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output_fem_aero')
 os.makedirs(OUT, exist_ok=True)

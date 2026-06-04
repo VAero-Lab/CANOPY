@@ -8,7 +8,7 @@ fractal structure with multiple tip loads.
 import os
 import canopy as cp
 import matplotlib.pyplot as plt
-from utils import get_base_wing
+from canopy import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output_fem')
 os.makedirs(OUT, exist_ok=True)

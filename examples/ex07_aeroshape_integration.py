@@ -12,7 +12,7 @@ non-conformal multi-point constraint (glue) FEM meshing.
 import os
 import canopy as cp
 from aeroshape.nurbs.export import NurbsExporter
-from utils import get_base_wing
+from canopy import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output_cad')
 os.makedirs(OUT, exist_ok=True)

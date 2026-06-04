@@ -138,6 +138,15 @@ The `examples/` directory contains demonstration scripts covering core capabilit
 - `ex12_fractal_optimization.py`: Full multi-disciplinary design optimization (MDO) evaluating the objective function and minimizing compliance by dynamically rebuilding the internal fractal B-Rep step models. Calculates baseline aerodynamic loads and exports them to JSON.
 - `ex13_cluster_optimization.py`: Cluster-ready global optimization (e.g. using Differential Evolution). Pre-loads aerodynamic forces directly from `baseline_aero_loads.json` bypassing all Julia/FLOWPanel.jl dependency for headless, isolated high-performance structural optimization runs.
 
+## Structural Optimization Architecture
+
+The optimization pipeline has been aggressively decoupled and modernized to support large-scale research workflows:
+
+- **Mathematical Decoupling:** The `AeroStructuralOptimizer` acts strictly as an optimization wrapper evaluating generic bounded `$x$` vectors. The heavy task of translating `$x$` back into a full fractal wing topology is entirely managed by a user-defined `topology_builder(x, wing)` callback, giving you 100% control over design zones, constraints, and mode switching without touching core library files.
+- **Smart LRU Caching:** Integrated a dictionary-based LRU cache system to prevent `SciPy` solvers (like Differential Evolution) from redundantly executing heavy 30-second FEM simulations when evaluating constraints and objectives for the same population member. This cuts the DE evaluation bottleneck in half.
+- **Dual Convergence Tracking:** Implemented a SciPy `callback` hook to split the history. The framework natively writes raw structural queries to `opt_history.csv` while simultaneously tracking the true, monotonic algorithmic improvement in `opt_convergence.csv`.
+- **Automated Post-Processing:** The new `canopy.OptimizationPostProcessor` parses these dual CSVs the second an HPC job completes, automatically rendering a `.gif` containing a 2D geometric trace alongside a dual-axis graph that contrasts the chaos of the raw evaluations against the true algorithmic convergence.
+
 ## ParaView Visualization & Post-Processing
 
 To overcome standard limitations with mixed-element meshes and wireframe rendering in ParaView, the solver automatically post-processes results into specialized formats:

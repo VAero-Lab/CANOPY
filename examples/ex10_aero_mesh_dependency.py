@@ -10,7 +10,7 @@ import os
 import time
 import numpy as np
 import canopy as cp
-from utils import get_base_wing
+from canopy import get_base_wing
 
 def main():
     print("======================================================================")

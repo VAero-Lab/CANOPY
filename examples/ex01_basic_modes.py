@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import canopy as cp
-from utils import get_base_wing
+from canopy import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), 'output')
 os.makedirs(OUT, exist_ok=True)

@@ -9,7 +9,7 @@ import canopy as cp
 from canopy.meshing import GmshMesher2D, append_1d_beams
 from canopy.aero_solver import run_vlm_analysis, map_aerodynamic_loads
 from canopy.fem_solver import parse_mesh_for_mapping, build_ccx_deck
-from utils import get_base_wing
+from canopy import get_base_wing
 
 OUT = 'examples/output_2d_flapping'
 os.makedirs(OUT, exist_ok=True)

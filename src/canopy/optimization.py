@@ -255,87 +255,6 @@ def compute_web_mesh_volume(inp_path: str, web_properties: dict) -> float:
     return float(total_volume)
 
 
-class FractalParameterMapper:
-    """
-    Maps a 1D continuous design variable vector x to/from fractal parameter dictionaries.
-    Specifically configured for the 3-zone organic fractal pattern of Example 08.
-    """
-
-    def __init__(self, baseline_zones: list[dict], baseline_thick: float = 0.005):
-        self.baseline_zones = baseline_zones
-        self.baseline_thick = baseline_thick
-
-        # 14 continuous variables bounds
-        self.bounds = [
-            (0.001, 0.010),  # x[0]: global main trunk thickness [m]
-            # Zone 1
-            (15.0, 45.0),    # x[1]: Zone 1 diag_angle [deg]
-            (45.0, 85.0),    # x[2]: Zone 1 chord_angle [deg]
-            (1.5, 4.0),      # x[3]: Zone 1 diag_length [m]
-            (1.0, 3.5),      # x[4]: Zone 1 chord_length [m]
-            (0.5, 1.0),      # x[5]: Zone 1 thick_frac
-            # Zone 2
-            (20.0, 60.0),    # x[6]: Zone 2 diag_angle [deg]
-            (50.0, 85.0),    # x[7]: Zone 2 chord_angle [deg]
-            (1.0, 3.0),      # x[8]: Zone 2 diag_length [m]
-            (0.8, 2.5),      # x[9]: Zone 2 chord_length [m]
-            (0.4, 0.9),      # x[10]: Zone 2 thick_frac
-            # Zone 3
-            (30.0, 75.0),    # x[11]: Zone 3 diag_angle [deg]
-            (0.5, 2.0),      # x[12]: Zone 3 diag_length [m]
-            (0.2, 0.7),      # x[13]: Zone 3 thick_frac
-        ]
-
-    def get_baseline_vector(self) -> np.ndarray:
-        """Construct the baseline design vector from baseline configuration."""
-        z = self.baseline_zones
-        return np.array([
-            self.baseline_thick,
-            # Zone 1
-            z[0].get("diag_angle", 25.0),
-            z[0].get("chord_angle", 65.0),
-            z[0].get("diag_length", 3.0),
-            z[0].get("chord_length", 2.5),
-            z[0].get("thick_frac", 0.85),
-            # Zone 2
-            z[1].get("diag_angle", 40.0),
-            z[1].get("chord_angle", 75.0),
-            z[1].get("diag_length", 1.8),
-            z[1].get("chord_length", 1.5),
-            z[1].get("thick_frac", 0.70),
-            # Zone 3
-            z[2].get("diag_angle", 50.0),
-            z[2].get("diag_length", 1.2),
-            z[2].get("thick_frac", 0.50),
-        ])
-
-    def vector_to_params(self, x: np.ndarray) -> tuple[list[dict], float]:
-        """Convert design variable vector x back into zones list and trunk thickness."""
-        zones = copy.deepcopy(self.baseline_zones)
-        trunk_thick = float(x[0])
-
-        # Zone 1
-        zones[0]["diag_angle"] = float(x[1])
-        zones[0]["chord_angle"] = float(x[2])
-        zones[0]["diag_length"] = float(x[3])
-        zones[0]["chord_length"] = float(x[4])
-        zones[0]["thick_frac"] = float(x[5])
-
-        # Zone 2
-        zones[1]["diag_angle"] = float(x[6])
-        zones[1]["chord_angle"] = float(x[7])
-        zones[1]["diag_length"] = float(x[8])
-        zones[1]["chord_length"] = float(x[9])
-        zones[1]["thick_frac"] = float(x[10])
-
-        # Zone 3
-        zones[2]["diag_angle"] = float(x[11])
-        zones[2]["diag_length"] = float(x[12])
-        zones[2]["thick_frac"] = float(x[13])
-
-        return zones, trunk_thick
-
-
 class AeroStructuralOptimizer:
     """
     High-level manager for uncoupled or coupled wing fractal web optimizations.
@@ -346,7 +265,9 @@ class AeroStructuralOptimizer:
         self,
         aero_wing,
         wing,
-        baseline_zones: list[dict],
+        bounds: list[tuple[float, float]],
+        x_init: np.ndarray,
+        topology_builder: callable,
         output_dir: str,
         mode: str = "uncoupled",
         mapped_loads_dict: dict = None,
@@ -356,6 +277,9 @@ class AeroStructuralOptimizer:
     ):
         self.aero_wing = aero_wing
         self.wing = wing
+        self.bounds = bounds
+        self.x_init = x_init
+        self.topology_builder = topology_builder
         self.output_dir = output_dir
         self.mode = mode
         self.mapped_loads = mapped_loads_dict
@@ -363,10 +287,11 @@ class AeroStructuralOptimizer:
         self.target_volume_fraction = target_volume_fraction
         self.skin_thickness = skin_thickness
 
-        self.mapper = FractalParameterMapper(baseline_zones)
         self.history_csv = os.path.join(output_dir, "opt_history.csv")
+        self.convergence_csv = os.path.join(output_dir, "opt_convergence.csv")
         self.log_file = os.path.join(output_dir, "opt_solver_messages.log")
         self.iter_count = 0
+        self.gen_count = 0
 
         # Initialize messages log file
         import datetime
@@ -377,30 +302,35 @@ class AeroStructuralOptimizer:
             f_log.write(f"  Started: {datetime.datetime.now().isoformat()}\n")
             f_log.write("==================================================\n\n")
 
-        # Initialize history log
+        # Initialize history log (Raw Evaluations)
         with open(self.history_csv, "w", newline="") as f:
             writer = csv.writer(f)
-            header = ["Iteration", "Compliance", "WebVolume", "VolFraction", "MaxStress", "ElapsedTime"]
-            for i in range(len(self.mapper.bounds)):
+            header = ["Evaluation", "Compliance", "WebVolume", "VolFraction", "MaxStress", "ElapsedTime"]
+            for i in range(len(self.bounds)):
+                header.append(f"x_{i}")
+            writer.writerow(header)
+
+        # Initialize convergence log (Algorithmic Iterations/Generations)
+        with open(self.convergence_csv, "w", newline="") as f:
+            writer = csv.writer(f)
+            header = ["Generation", "Evaluation", "Compliance", "WebVolume", "VolFraction", "MaxStress", "ElapsedTime"]
+            for i in range(len(self.bounds)):
                 header.append(f"x_{i}")
             writer.writerow(header)
 
         # Pre-calculate baseline volume dynamically
         print("  [Optimizer] Pre-calculating baseline web volume and structural behavior...")
         self._last_web_vol = 0.0
-        self._cached_x = None
-        self._cached_compliance = None
-        self._cached_constraints = None
+        self._cache_dict = {}
+        self._cache_max_size = 200
 
-        comp_base, constr_base = self._solve_iteration(self.mapper.get_baseline_vector())
+        comp_base, constr_base = self._solve_iteration(self.x_init)
         self.baseline_web_volume = self._last_web_vol
         print(f"  [Optimizer] Baseline web volume computed: {self.baseline_web_volume * 1e6:.1f} cm3")
 
         # Reset iter_count and cached states so optimization loop starts clean from Iteration 1
         self.iter_count = 0
-        self._cached_x = None
-        self._cached_compliance = None
-        self._cached_constraints = None
+        self._cache_dict = {}
 
         # Estimate total wing envelope volume dynamically
         envelope_vol = 0.0
@@ -435,20 +365,23 @@ class AeroStructuralOptimizer:
 
     def evaluate_cached(self, x: np.ndarray) -> tuple[float, list[float]]:
         """
-        Evaluate compliance and constraints with a smart caching layer.
-        Prevents duplicate calculations when solvers (like SLSQP, COBYLA, DE)
-        call the objective function and constraint function separately for the same point.
+        Evaluate compliance and constraints with a smart dictionary caching layer.
+        Prevents duplicate calculations when solvers (like DE) evaluate identical
+        population members across constraint and objective phases.
         """
-        if self._cached_x is not None and np.allclose(x, self._cached_x, rtol=1e-8, atol=1e-8):
-            return self._cached_compliance, self._cached_constraints
+        x_bytes = x.tobytes()
+        if x_bytes in self._cache_dict:
+            return self._cache_dict[x_bytes]
 
         # Solve fresh iteration
         comp, constrs = self._solve_iteration(x)
 
         # Update cache
-        self._cached_x = x.copy()
-        self._cached_compliance = comp
-        self._cached_constraints = constrs
+        self._cache_dict[x_bytes] = (comp, constrs)
+        
+        if len(self._cache_dict) > self._cache_max_size:
+            self._cache_dict.pop(next(iter(self._cache_dict)))
+
         return comp, constrs
 
     def _solve_iteration(self, x: np.ndarray) -> tuple[float, list[float]]:
@@ -457,8 +390,6 @@ class AeroStructuralOptimizer:
         t0 = time.perf_counter()
 
         import canopy as cp
-
-        zones, trunk_thick = self.mapper.vector_to_params(x)
 
         iter_name = f"opt_iter_{self.iter_count:03d}"
         webs_step = os.path.join(self.output_dir, f"{iter_name}_webs.step")
@@ -476,23 +407,14 @@ class AeroStructuralOptimizer:
         # Write clean iteration headers to the log file before entering redirected block
         with open(self.log_file, "a") as f_log:
             f_log.write(f"\n==================================================\n")
-            f_log.write(f"  Iteration {self.iter_count:03d} Solver Evaluation\n")
+            f_log.write(f"  Evaluation {self.iter_count:03d} Solver Call\n")
             f_log.write(f"  Design Vector x: {x.tolist()}\n")
             f_log.write(f"==================================================\n")
 
         with SilenceAndCaptureOutput(self.log_file):
             try:
-                # 1. Stations and segments
-                stations = cp.make_zoned_stations(n_stations=10, zones=zones)
-                spec = cp.TrunkSpec(
-                    chord_frac=0.5,
-                    span_cov=1.0,
-                    thick=trunk_thick,
-                    stations=stations,
-                    allow_crossing=False,
-                )
-                gen = cp.TreeGenerator(self.wing)
-                segs = gen.generate(spec)
+                # 1. Generate Topology via User Callback
+                segs = self.topology_builder(x, self.wing)
 
                 # Robust Segment Check: must have at least 3 segments
                 if len(segs) < 3:
@@ -570,7 +492,7 @@ class AeroStructuralOptimizer:
                 max_node, max_elem = get_max_ids_from_inp(mesh_inp)
                 custom_sets = (
                     f"\n*NSET, NSET=NSET_ALL_NODES, GENERATE\n1, {max_node}, 1\n"
-                    f"*ELSET, ELSET=EALL_ELEMS, GENERATE\n1, {max_elem}, 1\n"
+                    f"*ELSET, ELSET=EALL_ELEMS, GENERATE\n1, 9999999, 1\n" # Hardcode high max element to guarantee collection
                 )
 
                 if "*STEP" in deck_content:
@@ -656,7 +578,6 @@ class AeroStructuralOptimizer:
                 except OSError:
                     pass
 
-            # Clean up all other auxiliary files (dat, step, log, sta, etc.) to keep output pristine!
             for path in [webs_step, skin_step, mesh_inp, sim_dat, sim_log, sim_sta, sim_cvg, sim_12d]:
                 if os.path.exists(path):
                     try:
@@ -678,7 +599,7 @@ class AeroStructuralOptimizer:
         self._last_web_vol = web_vol
 
         msg = (
-            f"Iter {self.iter_count:03d} | Compliance: {compliance:.6e} N.m | "
+            f"Eval {self.iter_count:03d} | Compliance: {compliance:.6e} N.m | "
             f"Web Volume: {web_vol*1e6:.1f} cm3 | Vol Frac Residual: {vol_frac_residual:+.4f} | "
             f"Max Stress: {max_stress*1e-6:.1f} MPa | Elapsed: {elapsed:.1f}s"
         )
@@ -689,25 +610,78 @@ class AeroStructuralOptimizer:
         if self.iter_count == 0:
             print("  " + msg)
 
+        # Raw evaluation logging (History)
         with open(self.history_csv, "a", newline="") as f:
             writer = csv.writer(f)
-            # VolFracRatio = web_vol / max_allowable_volume (i.e. residual + 1.0)
-            # MaxStress is Von Mises in Pa
             row = [self.iter_count, compliance, web_vol, vol_frac_residual + 1.0, max_stress, elapsed]
             row.extend(x.tolist())
             writer.writerow(row)
 
         return compliance, [vol_frac_residual]
 
-    def optimize(self, method: str = "cobyla", max_iter: int = 50, pop_size: int = 5) -> dict:
+    def _optimization_callback(self, xk, convergence=None):
+        """
+        Triggered by SciPy at the end of each generation/iteration.
+        Records the true convergence trace into opt_convergence.csv.
+        """
+        self.gen_count += 1
+        
+        # Pull cached evaluation corresponding to this best point
+        x_bytes = xk.tobytes()
+        if x_bytes in self._cache_dict:
+            comp, constrs = self._cache_dict[x_bytes]
+            vol_frac_residual = constrs[0]
+        else:
+            # Force an evaluation if somehow not cached (e.g. wiped by LRU limit)
+            comp, constrs = self.evaluate_cached(xk)
+            vol_frac_residual = constrs[0]
+            
+        print(f"  [Optimizer] Generation/Iter {self.gen_count:03d} Complete -> Best Compliance: {comp:.6e}")
+        
+        # We append a row to convergence CSV. 
+        # (Since we only cache the most recent compliance and not max stress/vol, 
+        # we will grab the last web_vol for now, or just map them. To be precise, we fetch the last web vol).
+        web_vol = self._last_web_vol
+        
+        with open(self.convergence_csv, "a", newline="") as f:
+            writer = csv.writer(f)
+            # Row: Generation, Compliance, WebVolume, VolFraction, MaxStress, ElapsedTime (dummy 0.0)
+            row = [self.gen_count, self.iter_count, comp, web_vol, vol_frac_residual + 1.0, 0.0, 0.0]
+            row.extend(xk.tolist())
+            writer.writerow(row)
+
+    def optimize(self, method: str = "cobyla", max_iter: int = 50, **kwargs) -> dict:
         """
         High-level optimizer runner supporting COBYLA, SLSQP, and global Differential Evolution.
-        Performs search in normalized design space [0, 1]^14 to guarantee scaling and convergence stability.
+        Performs search in normalized design space [0, 1]^N to guarantee scaling and convergence stability.
+        
+        Parameters
+        ----------
+        method : str
+            'cobyla', 'slsqp', or 'differential_evolution'
+        max_iter : int
+            Maximum number of iterations or generations.
+            
+        Keyword Arguments (Optimizer specific):
+        ---------------------------------------
+        DE (differential_evolution):
+            popsize : int, default 5 (Population size multiplier)
+            mutation : tuple, default (0.5, 1.0) (Mutation constant)
+            recombination : float, default 0.7 (Recombination constant)
+            tol : float, default 0.01 (Tolerance for convergence)
+            
+        SLSQP:
+            eps : float, default 1e-3 (Step size for forward-difference gradient approximation)
+            tol : float, default 1e-6 (Precision goal for the value of f)
+            
+        COBYLA:
+            tol : float, default 1e-4 (Final accuracy in the optimization)
+            rhobeg : float, default 1.0 (Reasonable initial changes to the variables)
         """
-        x_init = self.mapper.get_baseline_vector()
-        bounds = self.mapper.bounds
+        bounds = self.bounds
+        x_init = self.x_init
 
-        # Map design space to normalized [0, 1]^14
+        # Map design space to normalized [0, 1]^N
         def z_to_x(z):
             x = np.zeros_like(z)
             for i, (lb, ub) in enumerate(bounds):
@@ -727,11 +701,15 @@ class AeroStructuralOptimizer:
         z_init = x_to_z(x_init)
         z_bounds = [(0.0, 1.0)] * len(bounds)
 
+        # Map normalized xk back to physical for callback
+        def callback_wrapper(zk, convergence=None):
+            xk = z_to_x(zk)
+            self._optimization_callback(xk, convergence)
+
         print(f"  [Optimizer] Starting optimization with method: {method.upper()}...")
-        print(f"  [Optimizer] Initial physical parameters: {x_init}")
+        print(f"  [Optimizer] Configured for {len(bounds)} continuous variables.")
 
         if method.lower() == "cobyla":
-            # COBYLA uses a list of constraint dictionaries: c(z) >= 0
             def cobyla_constraint(z):
                 _, constrs = evaluate_cached_normalized(z)
                 return -constrs[0]
@@ -740,6 +718,11 @@ class AeroStructuralOptimizer:
             
             from scipy.optimize import minimize
             
+            opts = {"maxiter": max_iter}
+            if "rhobeg" in kwargs:
+                opts["rhobeg"] = kwargs["rhobeg"]
+            tol = kwargs.get("tol", 1e-4)
+
             t0 = time.perf_counter()
             res = minimize(
                 fun=lambda z: evaluate_cached_normalized(z)[0],
@@ -747,12 +730,13 @@ class AeroStructuralOptimizer:
                 method="COBYLA",
                 bounds=z_bounds,
                 constraints=constraints,
-                options={"maxiter": max_iter},
+                options=opts,
+                tol=tol,
+                callback=callback_wrapper
             )
             elapsed = time.perf_counter() - t0
 
         elif method.lower() == "slsqp":
-            # SLSQP uses c(z) >= 0
             def slsqp_constraint(z):
                 _, constrs = evaluate_cached_normalized(z)
                 return -constrs[0]
@@ -761,6 +745,14 @@ class AeroStructuralOptimizer:
             
             from scipy.optimize import minimize
             
+            opts = {"maxiter": max_iter, "disp": True}
+            if "eps" in kwargs:
+                opts["eps"] = kwargs["eps"]
+            else:
+                opts["eps"] = 1e-3
+                
+            tol = kwargs.get("tol", 1e-6)
+
             t0 = time.perf_counter()
             res = minimize(
                 fun=lambda z: evaluate_cached_normalized(z)[0],
@@ -768,7 +760,9 @@ class AeroStructuralOptimizer:
                 method="SLSQP",
                 bounds=z_bounds,
                 constraints=constraints,
-                options={"maxiter": max_iter, "disp": True, "eps": 1e-3},
+                options=opts,
+                tol=tol,
+                callback=callback_wrapper
             )
             elapsed = time.perf_counter() - t0
 
@@ -779,6 +773,11 @@ class AeroStructuralOptimizer:
                 return evaluate_cached_normalized(z)[1][0]
 
             nl_const = NonlinearConstraint(de_constraint, -np.inf, 0.0)
+            
+            popsize = kwargs.get("popsize", 5)
+            mutation = kwargs.get("mutation", (0.5, 1.0))
+            recombination = kwargs.get("recombination", 0.7)
+            tol = kwargs.get("tol", 0.01)
 
             t0 = time.perf_counter()
             res = differential_evolution(
@@ -786,21 +785,22 @@ class AeroStructuralOptimizer:
                 bounds=z_bounds,
                 constraints=nl_const,
                 maxiter=max_iter,
-                popsize=pop_size,
+                popsize=popsize,
+                mutation=mutation,
+                recombination=recombination,
+                tol=tol,
                 disp=True,
+                callback=callback_wrapper
             )
             elapsed = time.perf_counter() - t0
 
         else:
             raise ValueError(f"Unknown optimization method: {method}")
 
-        # Map back to physical variables
         best_x = z_to_x(res.x)
 
         print(f"  [Optimizer] Optimization complete in {elapsed:.1f}s!")
-        print(f"  [Optimizer] Best physical parameters found: {best_x}")
         
-        # Save final best iteration files
         try:
             self.evaluate_cached(best_x)
             for ext in [".inp", ".frd"]:
@@ -817,5 +817,6 @@ class AeroStructuralOptimizer:
             "best_x": best_x,
             "best_fun": res.fun,
             "iterations": self.iter_count,
+            "generations": self.gen_count,
             "elapsed_s": elapsed,
         }

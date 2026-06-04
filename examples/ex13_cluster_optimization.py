@@ -11,15 +11,17 @@ import shutil
 import json
 import numpy as np
 import canopy as cp
-from utils import get_base_wing
+from canopy import get_base_wing
 
 OUT = os.path.join(os.path.dirname(__file__), "3D_wing_Opt")
 
 def clean_output_dir(out_dir):
-    """Remove previous optimization files from the output directory to start fresh."""
+    """Remove previous optimization files but intentionally preserve .json load files."""
     if os.path.exists(out_dir):
         print(f"Cleaning previous outputs from: {out_dir}")
         for filename in os.listdir(out_dir):
+            if filename.endswith(".json"):
+                continue  # PRESERVE json files!
             file_path = os.path.join(out_dir, filename)
             try:
                 if os.path.isfile(file_path) or os.path.islink(file_path):
@@ -58,7 +60,7 @@ def main():
                 min_length=0.015,
             ),
             "chord_sub": cp.SubParams(mode="dichotomous", max_depth=2),
-            "thick_frac": 0.85,
+            "thick_frac": 0.6,
         },
         {
             "eta_start": 0.35,
@@ -69,7 +71,7 @@ def main():
             "chord_length": 1.5,
             "diag_sub": cp.SubParams(mode="monopodial", max_depth=2, min_length=0.02),
             "chord_sub": cp.SubParams(mode="sympodial", max_depth=1),
-            "thick_frac": 0.7,
+            "thick_frac": 0.5,
         },
         {
             "eta_start": 0.7,
@@ -102,16 +104,78 @@ def main():
     print(f"   -> Loaded distributed panel loads for {len(mapped_forces)} skin nodes.")
 
     # ── 4. Set up the AeroStructuralOptimizer ──
-    print("\n4. Initializing AeroStructuralOptimizer...")
+    
+
+    # ── 4. Define Optimization Bounds & Topology Builder ──
+    print("\n4. Defining optimization mapping logic...")
+    bounds = [
+        (0.001, 0.010),  # x[0]: global main trunk thickness [m]
+        (15.0, 45.0),    # x[1]: Zone 1 diag_angle [deg]
+        (45.0, 85.0),    # x[2]: Zone 1 chord_angle [deg]
+        (1.5, 4.0),      # x[3]: Zone 1 diag_length [m]
+        (1.0, 3.5),      # x[4]: Zone 1 chord_length [m]
+        (0.5, 1.0),      # x[5]: Zone 1 thick_frac
+        (20.0, 60.0),    # x[6]: Zone 2 diag_angle [deg]
+        (50.0, 85.0),    # x[7]: Zone 2 chord_angle [deg]
+        (1.0, 3.0),      # x[8]: Zone 2 diag_length [m]
+        (0.8, 2.5),      # x[9]: Zone 2 chord_length [m]
+        (0.4, 0.9),      # x[10]: Zone 2 thick_frac
+        (30.0, 75.0),    # x[11]: Zone 3 diag_angle [deg]
+        (0.5, 2.0),      # x[12]: Zone 3 diag_length [m]
+        (0.2, 0.7),      # x[13]: Zone 3 thick_frac
+    ]
+    
+    x_init = np.array([
+        0.005,
+        25.0, 65.0, 3.0, 2.5, 0.85,
+        40.0, 75.0, 1.8, 1.5, 0.70,
+        50.0, 1.2, 0.50
+    ])
+    
+    import copy
+    def build_topology(x, wing_obj):
+        zones = copy.deepcopy(baseline_zones)
+        trunk_thick = float(x[0])
+
+        zones[0]["diag_angle"] = float(x[1])
+        zones[0]["chord_angle"] = float(x[2])
+        zones[0]["diag_length"] = float(x[3])
+        zones[0]["chord_length"] = float(x[4])
+        zones[0]["thick_frac"] = float(x[5])
+
+        zones[1]["diag_angle"] = float(x[6])
+        zones[1]["chord_angle"] = float(x[7])
+        zones[1]["diag_length"] = float(x[8])
+        zones[1]["chord_length"] = float(x[9])
+        zones[1]["thick_frac"] = float(x[10])
+
+        zones[2]["diag_angle"] = float(x[11])
+        zones[2]["diag_length"] = float(x[12])
+        zones[2]["thick_frac"] = float(x[13])
+        
+        stations = cp.make_zoned_stations(n_stations=10, zones=zones)
+        spec = cp.TrunkSpec(
+            chord_frac=0.5,
+            span_cov=1.0,
+            thick=trunk_thick,
+            stations=stations,
+            allow_crossing=False,
+        )
+        gen = cp.TreeGenerator(wing_obj)
+        return gen.generate(spec)
+
+    print("\n5. Initializing AeroStructuralOptimizer...")
     optimizer = cp.AeroStructuralOptimizer(
         aero_wing=aero_wing,
         wing=wing,
-        baseline_zones=baseline_zones,
+        bounds=bounds,
+        x_init=x_init,
+        topology_builder=build_topology,
         output_dir=OUT,
         mode="uncoupled",
-        mapped_loads_dict=mapped_forces,
-        save_every_n_iterations=5,      # Save files every 5 iterations (plus initial/final)
-        skin_thickness=0.003,          # 3mm skin thickness
+        mapped_loads_dict=mapped_forces if 'mapped_forces' in locals() else loaded_forces,
+        save_every_n_iterations=5,      
+        skin_thickness=0.003,          
     )
 
     # ── 4. Run Cluster Optimization (e.g. Differential Evolution) ──
@@ -119,7 +183,7 @@ def main():
     print("-" * 75)
     
     # Run the DE solver for robust global optimization
-    results = optimizer.optimize(method="differential_evolution", max_iter=20, pop_size=5)
+    results = optimizer.optimize(method="differential_evolution", max_iter=300, popsize=3)
     print("-" * 75)
     print("Cluster optimization completed successfully!")
     print(f"  Total solver calls: {results['iterations']}")
@@ -133,6 +197,11 @@ def main():
     print("  -> 'differential_evolution' (robust global search, global population)")
     print("=" * 75)
 
+
+
+    print("\n[Post-Processing] Generating convergence animation...")
+    post_processor = cp.OptimizationPostProcessor(OUT)
+    post_processor.animate_history(build_topology, aero_wing, wing)
 
 if __name__ == "__main__":
     main()

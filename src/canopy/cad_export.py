@@ -156,3 +156,20 @@ def export_hollow_skin(aerowing, output_step: str):
     assembly = Compound(skin_faces)
     NurbsExporter.to_step(assembly, output_step)
     return assembly
+
+
+def export_solid_wing(aerowing, output_step: str):
+    """
+    Extracts the full 3D solid wing volume from the AeroShape wing
+    and exports it to a STEP file for solid volumetric meshing.
+    """
+    from aeroshape.nurbs.export import NurbsExporter
+
+    wing_solid = aerowing.to_occ_shape()
+    
+    if not hasattr(wing_solid, "wrapped"):
+        from build123d import Shape
+        wing_solid = Shape(wing_solid)
+
+    NurbsExporter.to_step(wing_solid, output_step)
+    return wing_solid

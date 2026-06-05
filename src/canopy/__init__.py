@@ -32,7 +32,12 @@ from .helpers import (
 from .aeroshape_adapter import AeroWingAdapter
 from .cad_export import build_brep_webs, export_hollow_skin
 from .meshing import GmshMesher
-from .fem_solver import build_ccx_deck, parse_mesh_for_mapping
+from .fem_solver import (
+    build_ccx_deck, 
+    parse_mesh_for_mapping, 
+    CFRP_T300,
+    FOAM_EPO
+)
 from .run_utils import run_ccx
 from .aero_solver import run_aerodynamic_analysis, map_aerodynamic_loads
 from .optimization import AeroStructuralOptimizer
@@ -59,6 +64,8 @@ __all__ = [
     'build_ccx_deck',
     'parse_mesh_for_mapping',
     'run_ccx',
+    'CFRP_T300',
+    'FOAM_EPO',
     'run_aerodynamic_analysis',
     'map_aerodynamic_loads',
     'AeroStructuralOptimizer',

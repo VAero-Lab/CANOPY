@@ -35,6 +35,13 @@ CFRP_T300 = {
     "density": 1600.0,  # kg/m^3
 }
 
+FOAM_EPO = {
+    "name": "FOAM_EPO",
+    "E": 35e6,          # Pa
+    "nu": 0.3,
+    "density": 35.0,    # kg/m^3
+}
+
 
 def _parse_inp_nodes(inp_path: str) -> Dict[int, Tuple[float, float, float]]:
     """Parse *NODE block from a CalculiX .inp file and return {id: (x, y, z)}.
@@ -182,6 +189,7 @@ def build_ccx_deck(
     tip_load: float = -1000.0,
     point_loads: List[Dict[str, float]] = None,
     material: dict = None,
+    core_material: dict = None,
     output_path: str = None,
     solver: str = None,
     binary_output: bool = False,
@@ -237,6 +245,8 @@ def build_ccx_deck(
     """
     if material is None:
         material = CFRP_T300
+    if core_material is None:
+        core_material = FOAM_EPO
 
     if output_path is None:
         output_path = mesh_inp.replace('.inp', '_sim.inp')
@@ -285,6 +295,7 @@ def build_ccx_deck(
     # ── Detect Web and Beam Elsets and Boundary Nodes ──
     web_elset_names = sorted([k for k in set(list(elsets.keys()) + list(elements.keys())) if k.startswith('Web_')])
     beam_elset_names = sorted([k for k in set(list(elsets.keys()) + list(elements.keys())) if k.startswith('BEAMS_T_')])
+    has_core = 'Core' in elsets or 'Core' in elements
 
     # Flatten elements dict for quick lookup by ID
     flat_elements = {}
@@ -446,6 +457,14 @@ def build_ccx_deck(
     lines.append('*DENSITY')
     lines.append(f'{material["density"]}')
 
+    if has_core:
+        lines.append('**')
+        lines.append(f'*MATERIAL, NAME={core_material["name"]}')
+        lines.append('*ELASTIC')
+        lines.append(f'{core_material.get("E", 35e6)}, {core_material.get("nu", 0.3)}')
+        lines.append('*DENSITY')
+        lines.append(f'{core_material.get("density", 35.0)}')
+
     # ── Orientations ──
     lines.append('**')
     lines.append('** ═══════════════════════════════════════════')
@@ -486,6 +505,15 @@ def build_ccx_deck(
         lines.append(f'*SHELL SECTION, ELSET=Web_{web_idx}, MATERIAL={material["name"]}, '
                      f'ORIENTATION=OR_Web_{web_idx}')
         lines.append(f'{thick}')
+
+    # ── Solid Sections ──
+    if has_core:
+        lines.append('**')
+        lines.append('** ═══════════════════════════════════════════')
+        lines.append('** SOLID SECTIONS')
+        lines.append('** ═══════════════════════════════════════════')
+        lines.append('**')
+        lines.append(f'*SOLID SECTION, ELSET=Core, MATERIAL={core_material["name"]}')
 
     # ── Beam Sections ──
     if beam_elset_names:

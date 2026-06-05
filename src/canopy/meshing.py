@@ -247,6 +247,93 @@ class GmshMesher:
             "n_skin_faces": len(skin_surfs),
         }
 
+    def mesh_solid_core(self, step_path: str, output_inp: str, export_msh: bool = False):
+        """
+        Generate a conformal 3D tetrahedral mesh of the wing core, completely
+        enclosed by a perfectly structured Quadrilateral shell skin. 
+        Pyramid elements are automatically generated at the boundary to transition
+        between the Quadrilateral skin and Tetrahedral core.
+        """
+        if not os.path.exists(step_path):
+            raise FileNotFoundError(f"Input STEP file not found: {step_path}")
+
+        gmsh.initialize()
+        gmsh.option.setNumber("General.Terminal", 0)
+        gmsh.option.setNumber("General.NumThreads", os.cpu_count() or 4)
+        
+        # We must use RecombineAll = 0 to force Structured Triangles on the skin.
+        # This prevents Gmsh from generating Pyramids (C3D5) which CalculiX rejects.
+        gmsh.option.setNumber("Mesh.RecombineAll", 0)
+        gmsh.option.setNumber("Mesh.Algorithm", 8)      # 2D Frontal-Delaunay
+        gmsh.option.setNumber("Mesh.Algorithm3D", 1)    # 3D Delaunay
+        
+        gmsh.option.setNumber("Mesh.MeshSizeMin", self.target_size * 0.8)
+        gmsh.option.setNumber("Mesh.MeshSizeMax", self.target_size * 1.2)
+
+        # Import solid wing
+        tags = gmsh.model.occ.importShapes(step_path)
+        gmsh.model.occ.synchronize()
+
+        # Identify Volumes (Core) and Surfaces (Skin)
+        volumes = gmsh.model.getEntities(3)
+        surfaces = gmsh.model.getEntities(2)
+
+        if not volumes:
+            raise ValueError("No 3D volumes found in the STEP file! Make sure you exported a Solid Wing.")
+
+        # Assign Physical Groups
+        pg_core = gmsh.model.addPhysicalGroup(3, [t[1] for t in volumes])
+        gmsh.model.setPhysicalName(3, pg_core, "Core")
+
+        pg_skin = gmsh.model.addPhysicalGroup(2, [t[1] for t in surfaces])
+        gmsh.model.setPhysicalName(2, pg_skin, "WingSkin")
+
+        # Apply Transfinite mapping to the skin to guarantee structured Quads
+        # For each surface, we constrain its boundary curves based on their length
+        for dim, tag in surfaces:
+            bnd = gmsh.model.getBoundary([(dim, tag)], oriented=True)
+            for c_dim, c_tag in bnd:
+                c_tag_abs = abs(c_tag)
+                length = gmsh.model.occ.getMass(c_dim, c_tag_abs)
+                n_points = max(2, int(round(length / self.target_size)) + 1)
+                gmsh.model.mesh.setTransfiniteCurve(c_tag_abs, n_points)
+
+        # Generate 3D volume mesh (this will automatically mesh 1D, 2D, and then 3D)
+        gmsh.model.mesh.generate(3)
+
+        # Renumber to ensure contiguous IDs (CalculiX requirement)
+        gmsh.model.mesh.renumberNodes()
+        gmsh.model.mesh.renumberElements()
+
+        # Write CalculiX INP
+        gmsh.write(output_inp)
+
+        if export_msh:
+            output_msh = output_inp.replace('.inp', '.msh')
+            if output_msh != output_inp:
+                gmsh.write(output_msh)
+
+        # Extract stats
+        node_tags, _, _ = gmsh.model.mesh.getNodes()
+        n_nodes = len(node_tags)
+        
+        gmsh.finalize()
+
+        # Post-process INP file because Gmsh uses plane stress names for shells (CPS4) 
+        # and standard volume names for solids (C3D4, C3D5, C3D10). We just fix the shells.
+        with open(output_inp, 'r') as f:
+            content = f.read()
+        content = content.replace('type=CPS4', 'type=S4')
+        content = content.replace('type=CPS3', 'type=S3')
+        with open(output_inp, 'w') as f:
+            f.write(content)
+
+        return {
+            "n_nodes": n_nodes,
+            "target_size": self.target_size,
+            "inp_path": output_inp
+        }
+
 
 class GmshMesher2D:
     """

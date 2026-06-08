@@ -60,7 +60,7 @@ def main():
                 min_length=0.015,
             ),
             "chord_sub": cp.SubParams(mode="dichotomous", max_depth=2),
-            "thick_frac": 0.6,
+            "thick_frac": 0.75,
         },
         {
             "eta_start": 0.35,
@@ -71,7 +71,7 @@ def main():
             "chord_length": 1.5,
             "diag_sub": cp.SubParams(mode="monopodial", max_depth=2, min_length=0.02),
             "chord_sub": cp.SubParams(mode="sympodial", max_depth=1),
-            "thick_frac": 0.5,
+            "thick_frac": 0.9,
         },
         {
             "eta_start": 0.7,
@@ -82,7 +82,7 @@ def main():
             "chord_length": 0.8,
             "diag_sub": cp.SubParams(mode="monochasium", max_depth=2, min_length=0.02),
             "chord_sub": cp.SubParams(mode="dichotomous", max_depth=1),
-            "thick_frac": 0.5,
+            "thick_frac": 0.9,
         },
     ]
 
@@ -109,7 +109,7 @@ def main():
     # ── 4. Define Optimization Bounds & Topology Builder ──
     print("\n4. Defining optimization mapping logic...")
     bounds = [
-        (0.001, 0.010),  # x[0]: global main trunk thickness [m]
+        (0.004, 0.006),  # x[0]: global main trunk thickness [m]
         (15.0, 45.0),    # x[1]: Zone 1 diag_angle [deg]
         (45.0, 85.0),    # x[2]: Zone 1 chord_angle [deg]
         (1.5, 4.0),      # x[3]: Zone 1 diag_length [m]
@@ -183,7 +183,7 @@ def main():
     print("-" * 75)
     
     # Run the DE solver for robust global optimization
-    results = optimizer.optimize(method="differential_evolution", max_iter=300, popsize=3)
+    results = optimizer.optimize(method="cobyla", max_iter=300, popsize=3)
     print("-" * 75)
     print("Cluster optimization completed successfully!")
     print(f"  Total solver calls: {results['iterations']}")

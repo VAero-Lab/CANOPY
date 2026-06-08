@@ -30,7 +30,7 @@ class GmshMesher:
     """
 
     def __init__(self, target_elem_size: float = 0.05,
-                 skin_elem_size: float = None, skin_clustering: float = 1.0):
+                 skin_elem_size: float = None, skin_clustering: float = 1.0, min_elem_size: float = None):
         if not GMSH_AVAILABLE:
             raise ImportError(
                 "Gmsh is not installed. Please run `pip install gmsh` to use the GmshMesher.")
@@ -38,6 +38,7 @@ class GmshMesher:
         self.target_size = target_elem_size
         self.skin_size = skin_elem_size if skin_elem_size is not None else target_elem_size
         self.skin_clustering = skin_clustering
+        self.min_elem_size = min_elem_size
 
     def mesh(self, webs_step: str, output_inp: str, skin_step: str = None,
              web_properties: dict = None, nz: int = None, export_msh: bool = False):
@@ -267,8 +268,12 @@ class GmshMesher:
         gmsh.option.setNumber("Mesh.Algorithm", 8)      # 2D Frontal-Delaunay
         gmsh.option.setNumber("Mesh.Algorithm3D", 1)    # 3D Delaunay
         
-        gmsh.option.setNumber("Mesh.MeshSizeMin", self.target_size * 0.8)
+        if self.min_elem_size is not None:
+            gmsh.option.setNumber("Mesh.MeshSizeMin", self.min_elem_size)
+        else:
+            gmsh.option.setNumber("Mesh.MeshSizeMin", self.target_size * 0.8)
         gmsh.option.setNumber("Mesh.MeshSizeMax", self.target_size * 1.2)
+        gmsh.option.setNumber("Mesh.CharacteristicLengthFromCurvature", 1)
 
         # Import solid wing
         tags = gmsh.model.occ.importShapes(step_path)
@@ -285,18 +290,18 @@ class GmshMesher:
         pg_core = gmsh.model.addPhysicalGroup(3, [t[1] for t in volumes])
         gmsh.model.setPhysicalName(3, pg_core, "Core")
 
-        pg_skin = gmsh.model.addPhysicalGroup(2, [t[1] for t in surfaces])
+        # Filter out the flat root and tip planes (constant Y) from the skin group
+        skin_tags = []
+        for dim, tag in surfaces:
+            xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(dim, tag)
+            if abs(ymax - ymin) > 1e-4:  # True aerodynamic skin spans across Y
+                skin_tags.append(tag)
+
+        pg_skin = gmsh.model.addPhysicalGroup(2, skin_tags)
         gmsh.model.setPhysicalName(2, pg_skin, "WingSkin")
 
-        # Apply Transfinite mapping to the skin to guarantee structured Quads
-        # For each surface, we constrain its boundary curves based on their length
-        for dim, tag in surfaces:
-            bnd = gmsh.model.getBoundary([(dim, tag)], oriented=True)
-            for c_dim, c_tag in bnd:
-                c_tag_abs = abs(c_tag)
-                length = gmsh.model.occ.getMass(c_dim, c_tag_abs)
-                n_points = max(2, int(round(length / self.target_size)) + 1)
-                gmsh.model.mesh.setTransfiniteCurve(c_tag_abs, n_points)
+        # Removed Transfinite mapping to the skin to allow unstructured Triangles.
+        # This prevents overlapping facets on sharp trailing edges!
 
         # Generate 3D volume mesh (this will automatically mesh 1D, 2D, and then 3D)
         gmsh.model.mesh.generate(3)

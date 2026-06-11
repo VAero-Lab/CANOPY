@@ -255,6 +255,177 @@ def compute_web_mesh_volume(inp_path: str, web_properties: dict) -> float:
     return float(total_volume)
 
 
+def compute_skin_mesh_volume(inp_path: str, skin_thickness: float) -> float:
+    """
+    Computes the exact volume of the structural skin by calculating
+    the quadrilateral and triangular shell element areas in the WingSkin
+    elset and multiplying by the skin_thickness.
+    """
+    if not os.path.isfile(inp_path):
+        return 0.0
+
+    nodes = {}
+    elements = {}
+    skin_eids = []
+    
+    current_mode = None
+
+    with open(inp_path, "r") as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("**"):
+                continue
+            
+            if stripped.startswith("*"):
+                header = stripped.upper()
+                if header.startswith("*NODE"):
+                    current_mode = "node"
+                elif header.startswith("*ELEMENT"):
+                    current_mode = "element"
+                elif header.startswith("*ELSET"):
+                    current_mode = "elset"
+                    if "WINGSKIN" in header:
+                        current_mode = "skin_elset"
+                else:
+                    current_mode = None
+                continue
+
+            if current_mode == "node":
+                parts = stripped.split(",")
+                try:
+                    nid = int(parts[0].strip())
+                    coords = [float(p.strip()) for p in parts[1:4]]
+                    nodes[nid] = np.array(coords)
+                except ValueError:
+                    pass
+            elif current_mode == "element":
+                parts = stripped.split(",")
+                try:
+                    eid = int(parts[0].strip())
+                    conn = [int(p.strip()) for p in parts[1:] if p.strip()]
+                    elements[eid] = conn
+                except ValueError:
+                    pass
+            elif current_mode == "skin_elset":
+                parts = [p.strip() for p in stripped.split(",") if p.strip()]
+                for p in parts:
+                    try:
+                        skin_eids.append(int(p))
+                    except ValueError:
+                        pass
+
+    total_area = 0.0
+    for eid in skin_eids:
+        conn = elements.get(eid)
+        if conn is None:
+            continue
+        
+        if len(conn) == 4:
+            p1, p2, p3, p4 = (nodes.get(c) for c in conn)
+            if p1 is not None and p2 is not None and p3 is not None and p4 is not None:
+                d1 = p3 - p1
+                d2 = p4 - p2
+                total_area += 0.5 * np.linalg.norm(np.cross(d1, d2))
+        elif len(conn) == 3:
+            p1, p2, p3 = (nodes.get(c) for c in conn)
+            if p1 is not None and p2 is not None and p3 is not None:
+                v1 = p2 - p1
+                v2 = p3 - p1
+                total_area += 0.5 * np.linalg.norm(np.cross(v1, v2))
+
+    return float(total_area * skin_thickness)
+
+
+def compute_core_mesh_volume(inp_path: str) -> float:
+    """
+    Computes the exact volume of the 3D solid core by calculating
+    the volume of all C3D4 tetrahedral elements in the Core elset.
+    """
+    if not os.path.isfile(inp_path):
+        return 0.0
+
+    nodes = {}
+    elements = {}
+    core_eids = []
+    
+    current_mode = None
+
+    with open(inp_path, "r") as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("**"):
+                continue
+            
+            if stripped.startswith("*"):
+                header = stripped.upper()
+                if header.startswith("*NODE"):
+                    current_mode = "node"
+                elif header.startswith("*ELEMENT"):
+                    current_mode = "element"
+                elif header.startswith("*ELSET"):
+                    current_mode = "elset"
+                    if "CORE" in header:
+                        current_mode = "core_elset"
+                else:
+                    current_mode = None
+                continue
+
+            if current_mode == "node":
+                parts = stripped.split(",")
+                try:
+                    nid = int(parts[0].strip())
+                    coords = [float(p.strip()) for p in parts[1:4]]
+                    nodes[nid] = np.array(coords)
+                except ValueError:
+                    pass
+            elif current_mode == "element":
+                parts = stripped.split(",")
+                try:
+                    eid = int(parts[0].strip())
+                    conn = [int(p.strip()) for p in parts[1:] if p.strip()]
+                    elements[eid] = conn
+                except ValueError:
+                    pass
+            elif current_mode == "core_elset":
+                parts = [p.strip() for p in stripped.split(",") if p.strip()]
+                for p in parts:
+                    try:
+                        core_eids.append(int(p))
+                    except ValueError:
+                        pass
+
+    total_volume = 0.0
+    for eid in core_eids:
+        conn = elements.get(eid)
+        if conn is None or len(conn) != 4:
+            continue
+            
+        p1, p2, p3, p4 = (nodes.get(c) for c in conn)
+        if p1 is not None and p2 is not None and p3 is not None and p4 is not None:
+            # Volume of tetrahedron = |(a-d) . ((b-d) x (c-d))| / 6
+            ad = p1 - p4
+            bd = p2 - p4
+            cd = p3 - p4
+            vol = abs(np.dot(ad, np.cross(bd, cd))) / 6.0
+            total_volume += vol
+
+    return float(total_volume)
+
+
+def compute_structural_mass(inp_path: str, web_properties: dict, skin_thickness: float, 
+                            skin_density: float = 1600.0, web_density: float = 1600.0, 
+                            core_density: float = 35.0) -> float:
+    """
+    Computes the total structural mass [kg] of the wing.
+    M = (V_skin * rho_skin) + (V_webs * rho_webs) + (V_core * rho_core)
+    """
+    v_skin = compute_skin_mesh_volume(inp_path, skin_thickness)
+    v_webs = compute_web_mesh_volume(inp_path, web_properties)
+    v_core = compute_core_mesh_volume(inp_path)
+    
+    return (v_skin * skin_density) + (v_webs * web_density) + (v_core * core_density)
+
+
 class AeroStructuralOptimizer:
     """
     High-level manager for uncoupled or coupled wing fractal web optimizations.
@@ -271,9 +442,13 @@ class AeroStructuralOptimizer:
         output_dir: str,
         mode: str = "uncoupled",
         mapped_loads_dict: dict = None,
+        aero_data: dict = None,
         save_every_n_iterations: int = None,
         target_volume_fraction: float = 0.25,
+        target_mass_kg: float = None,
         skin_thickness: float = 0.003,
+        mesh_target_elem_size: float = 0.15,
+        mesh_skin_elem_size: float = 0.25,
     ):
         self.aero_wing = aero_wing
         self.wing = wing
@@ -283,9 +458,13 @@ class AeroStructuralOptimizer:
         self.output_dir = output_dir
         self.mode = mode
         self.mapped_loads = mapped_loads_dict
+        self.aero_data = aero_data
         self.save_every_n_iterations = save_every_n_iterations
         self.target_volume_fraction = target_volume_fraction
+        self.target_mass_kg = target_mass_kg
         self.skin_thickness = skin_thickness
+        self.mesh_target_elem_size = mesh_target_elem_size
+        self.mesh_skin_elem_size = mesh_skin_elem_size
 
         self.history_csv = os.path.join(output_dir, "opt_history.csv")
         self.convergence_csv = os.path.join(output_dir, "opt_convergence.csv")
@@ -305,7 +484,7 @@ class AeroStructuralOptimizer:
         # Initialize history log (Raw Evaluations)
         with open(self.history_csv, "w", newline="") as f:
             writer = csv.writer(f)
-            header = ["Evaluation", "Compliance", "WebVolume", "VolFraction", "MaxStress", "ElapsedTime"]
+            header = ["Evaluation", "Compliance", "WebVolume", "Mass", "ConstraintResidual", "MaxStress", "ElapsedTime"]
             for i in range(len(self.bounds)):
                 header.append(f"x_{i}")
             writer.writerow(header)
@@ -313,7 +492,7 @@ class AeroStructuralOptimizer:
         # Initialize convergence log (Algorithmic Iterations/Generations)
         with open(self.convergence_csv, "w", newline="") as f:
             writer = csv.writer(f)
-            header = ["Generation", "Evaluation", "Compliance", "WebVolume", "VolFraction", "MaxStress", "ElapsedTime"]
+            header = ["Generation", "Evaluation", "Compliance", "WebVolume", "Mass", "ConstraintResidual", "MaxStress", "ElapsedTime"]
             for i in range(len(self.bounds)):
                 header.append(f"x_{i}")
             writer.writerow(header)
@@ -347,10 +526,12 @@ class AeroStructuralOptimizer:
         if envelope_vol < 1e-3:
             envelope_vol = 1.0 * 7.5 * 0.2
 
-        # Max allowable volume is exactly target_volume_fraction of the wing envelope volume!
-        self.max_allowable_volume = envelope_vol * target_volume_fraction
+        if self.target_mass_kg is None:
+            self.max_allowable_volume = envelope_vol * target_volume_fraction
+        else:
+            self.max_allowable_volume = None
 
-        if self.mode == "uncoupled" and self.mapped_loads is None:
+        if self.mode == "uncoupled" and self.mapped_loads is None and self.aero_data is None:
             print("  [Optimizer] Running uncoupled baseline aerodynamic solve...")
             import canopy as cp
             self.mapped_loads = {}
@@ -399,9 +580,10 @@ class AeroStructuralOptimizer:
         sim_dat = os.path.join(self.output_dir, f"{iter_name}_sim.dat")
 
         compliance = 1e10
-        vol_frac_residual = 1.0
+        constraint_residual = 1.0
         max_stress = 0.0
         web_vol = 0.0
+        total_mass = 0.0
 
         exc = None
         # Write clean iteration headers to the log file before entering redirected block
@@ -425,20 +607,40 @@ class AeroStructuralOptimizer:
                 cp.export_hollow_skin(self.aero_wing, output_step=skin_step)
 
                 # 3. Meshing (coarser target sizing for fast search optimization)
-                mesher = cp.GmshMesher(target_elem_size=0.15, skin_elem_size=0.25)
+                mesher = cp.GmshMesher(
+                    target_elem_size=self.mesh_target_elem_size, 
+                    skin_elem_size=self.mesh_skin_elem_size
+                )
                 mesh_stats = mesher.mesh(
                     webs_step, mesh_inp,
                     skin_step=skin_step,
                     web_properties=props,
                 )
 
-                # 4. Aerodynamics (if fully coupled mode active)
+                # 4. Aerodynamics (uncoupled or coupled)
                 current_loads = self.mapped_loads
+                
                 if self.mode == "coupled":
                     aero_in = os.path.join(self.output_dir, f"{iter_name}_aero_input.json")
                     aero_out = os.path.join(self.output_dir, f"{iter_name}_aero_loads.json")
                     coords = cp.extract_oml_grid(self.aero_wing, num_points_profile=40)
-                    cp.solve_flowpanel(self.aero_wing, coords, output_json=aero_out, input_json=aero_in)
+                    aero_data = cp.solve_flowpanel(self.aero_wing, coords, output_json=aero_out, input_json=aero_in)
+                    nodes, skin_nodes = cp.parse_mesh_for_mapping(mesh_inp, elset_name='WingSkin')
+                    current_loads = cp.map_aerodynamic_loads(
+                        aero_centroids=aero_data["centroids"],
+                        aero_forces=aero_data["forces"],
+                        nodes_dict=nodes,
+                        skin_node_ids=skin_nodes,
+                    )
+                elif self.aero_data is not None:
+                    # Dynamically map the uncoupled pre-computed aero data to the new mesh
+                    nodes, skin_nodes = cp.parse_mesh_for_mapping(mesh_inp, elset_name='WingSkin')
+                    current_loads = cp.map_aerodynamic_loads(
+                        aero_centroids=np.array(self.aero_data["centroids"]),
+                        aero_forces=np.array(self.aero_data["forces"]),
+                        nodes_dict=nodes,
+                        skin_node_ids=skin_nodes,
+                    )
 
                 # 5. Build CCX Deck
                 sim_inp = cp.build_ccx_deck(
@@ -530,6 +732,7 @@ class AeroStructuralOptimizer:
                         max_stress = float(max(stresses.values()))
 
                     web_vol = compute_web_mesh_volume(mesh_inp, props)
+                    total_mass = compute_structural_mass(mesh_inp, props, self.skin_thickness)
                     if web_vol < 1e-6:
                         raise ValueError("Calculated web volume is exactly 0.0 (invalid mesh).")
                 else:
@@ -588,19 +791,23 @@ class AeroStructuralOptimizer:
         if exc is not None or web_vol < 1e-6 or compliance >= 1e9:
             compliance = 1e10
             web_vol = 0.0
-            vol_frac_residual = 10.0
+            total_mass = 0.0
+            constraint_residual = 10.0
         else:
-            if not hasattr(self, "max_allowable_volume") or self.max_allowable_volume is None:
-                vol_frac_residual = 0.0
+            if self.target_mass_kg is not None:
+                constraint_residual = (total_mass / self.target_mass_kg) - 1.0
+            elif getattr(self, "max_allowable_volume", None) is not None:
+                constraint_residual = (web_vol / self.max_allowable_volume) - 1.0
             else:
-                vol_frac_residual = (web_vol / self.max_allowable_volume) - 1.0
+                constraint_residual = 0.0
 
         elapsed = time.perf_counter() - t0
         self._last_web_vol = web_vol
+        self._last_mass = total_mass
 
         msg = (
             f"Eval {self.iter_count:03d} | Compliance: {compliance:.6e} N.m | "
-            f"Web Volume: {web_vol*1e6:.1f} cm3 | Vol Frac Residual: {vol_frac_residual:+.4f} | "
+            f"Mass: {total_mass:.2f} kg | Constraint Res: {constraint_residual:+.4f} | "
             f"Max Stress: {max_stress*1e-6:.1f} MPa | Elapsed: {elapsed:.1f}s"
         )
 
@@ -613,11 +820,11 @@ class AeroStructuralOptimizer:
         # Raw evaluation logging (History)
         with open(self.history_csv, "a", newline="") as f:
             writer = csv.writer(f)
-            row = [self.iter_count, compliance, web_vol, vol_frac_residual + 1.0, max_stress, elapsed]
+            row = [self.iter_count, compliance, web_vol, total_mass, constraint_residual, max_stress, elapsed]
             row.extend(x.tolist())
             writer.writerow(row)
 
-        return compliance, [vol_frac_residual]
+        return compliance, [constraint_residual]
 
     def _optimization_callback(self, xk, convergence=None):
         """
@@ -630,23 +837,24 @@ class AeroStructuralOptimizer:
         x_bytes = xk.tobytes()
         if x_bytes in self._cache_dict:
             comp, constrs = self._cache_dict[x_bytes]
-            vol_frac_residual = constrs[0]
+            constraint_residual = constrs[0]
         else:
             # Force an evaluation if somehow not cached (e.g. wiped by LRU limit)
             comp, constrs = self.evaluate_cached(xk)
-            vol_frac_residual = constrs[0]
+            constraint_residual = constrs[0]
             
         print(f"  [Optimizer] Generation/Iter {self.gen_count:03d} Complete -> Best Compliance: {comp:.6e}")
         
         # We append a row to convergence CSV. 
         # (Since we only cache the most recent compliance and not max stress/vol, 
         # we will grab the last web_vol for now, or just map them. To be precise, we fetch the last web vol).
-        web_vol = self._last_web_vol
+        web_vol = getattr(self, "_last_web_vol", 0.0)
+        total_mass = getattr(self, "_last_mass", 0.0)
         
         with open(self.convergence_csv, "a", newline="") as f:
             writer = csv.writer(f)
-            # Row: Generation, Compliance, WebVolume, VolFraction, MaxStress, ElapsedTime (dummy 0.0)
-            row = [self.gen_count, self.iter_count, comp, web_vol, vol_frac_residual + 1.0, 0.0, 0.0]
+            # Row: Generation, Evaluation, Compliance, WebVolume, Mass, ConstraintResidual, MaxStress, ElapsedTime
+            row = [self.gen_count, self.iter_count, comp, web_vol, total_mass, constraint_residual, 0.0, 0.0]
             row.extend(xk.tolist())
             writer.writerow(row)
 

@@ -177,10 +177,9 @@ class GmshMesher:
                     h_tags.append(c_tag_abs)
                     h_lengths.append(gmsh.model.occ.getMass(c_dim, c_tag_abs))
 
-            # Rule A: Web Fragments (Exactly 2 vertical edges)
-            # Because we only fragment webs against webs (vertical cuts), they
-            # remain 4-sided
-            if len(v_tags) == 2:
+            # Rule A: Web Fragments (Exactly 2 vertical edges and 2 horizontal edges = 4 sides)
+            # Because we only fragment webs against webs (vertical cuts), they generally remain 4-sided
+            if len(v_tags) == 2 and len(bnd) == 4:
                 for v_tag in v_tags:
                     gmsh.model.mesh.setTransfiniteCurve(v_tag, nz + 1)
                 if h_tags:
@@ -188,19 +187,65 @@ class GmshMesher:
                     nx = max(1, int(round(avg_len / self.target_size)))
                     for h_tag in h_tags:
                         gmsh.model.mesh.setTransfiniteCurve(h_tag, nx + 1)
-
-            # Rule B: Wing Skin (0 vertical edges, 4 boundary edges forming a
-            # loop)
-            elif len(v_tags) == 0 and len(bnd) == 4:
-                edges = [abs(t) for _, t in bnd]
-                if len(edges) == 4:
-                    # Transfinite curve constraints commented out to avoid "5 corner" errors
+                        
+                try:
+                    gmsh.model.mesh.setTransfiniteSurface(tag)
+                except Exception:
                     pass
 
-            # try:
-            #     gmsh.model.mesh.setTransfiniteSurface(tag)
-            # except Exception:
-            #     pass
+            # Rule B: Wing Skin (0 vertical edges, 4 boundary edges forming a loop)
+            elif len(v_tags) == 0 and len(bnd) == 4:
+                edges = [abs(t) for _, t in bnd]
+                
+                # Topologically pair the 4 edges to enforce perfect structured map
+                edge_pts = {}
+                for e in edges:
+                    pts = gmsh.model.getBoundary([(1, e)])
+                    edge_pts[e] = set([abs(pt) for dim, pt in pts if dim == 0])
+                
+                pairs = []
+                unpaired = set(edges)
+                
+                while unpaired:
+                    e1 = unpaired.pop()
+                    opposite_e = None
+                    for e2 in list(unpaired):
+                        if not edge_pts[e1].intersection(edge_pts[e2]):
+                            opposite_e = e2
+                            break
+                    if opposite_e is not None:
+                        unpaired.remove(opposite_e)
+                        pairs.append((e1, opposite_e))
+                    else:
+                        if unpaired:
+                            pairs.append((e1, unpaired.pop()))
+                
+                if len(pairs) == 2:
+                    p1_e1, p1_e2 = pairs[0]
+                    p2_e1, p2_e2 = pairs[1]
+                    
+                    n_p1 = max(2, int(round(gmsh.model.occ.getMass(1, p1_e1) / self.skin_size)) + 1)
+                    n_p2 = max(2, int(round(gmsh.model.occ.getMass(1, p2_e1) / self.skin_size)) + 1)
+                    
+                    gmsh.model.mesh.setTransfiniteCurve(p1_e1, n_p1)
+                    gmsh.model.mesh.setTransfiniteCurve(p1_e2, n_p1)
+                    gmsh.model.mesh.setTransfiniteCurve(p2_e1, n_p2)
+                    gmsh.model.mesh.setTransfiniteCurve(p2_e2, n_p2)
+                    
+                    corners_set = set()
+                    for e in edges:
+                        corners_set.update(edge_pts[e])
+                        
+                    if len(corners_set) == 4:
+                        try:
+                            gmsh.model.mesh.setTransfiniteSurface(tag, "Left", list(corners_set))
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            gmsh.model.mesh.setTransfiniteSurface(tag)
+                        except Exception:
+                            pass
 
             gmsh.model.mesh.setRecombine(dim, tag)
 

@@ -40,7 +40,13 @@ from .fem_solver import (
 )
 from .run_utils import run_ccx
 from .aero_solver import run_aerodynamic_analysis, map_aerodynamic_loads
-from .optimization import AeroStructuralOptimizer
+from .optimization import (
+    AeroStructuralOptimizer,
+    compute_web_mesh_volume,
+    compute_skin_mesh_volume,
+    compute_core_mesh_volume,
+    compute_structural_mass
+)
 from .geometry_utils import get_base_wing
 from .optimization_plots import OptimizationPostProcessor
 
@@ -69,6 +75,10 @@ __all__ = [
     'run_aerodynamic_analysis',
     'map_aerodynamic_loads',
     'AeroStructuralOptimizer',
+    'compute_web_mesh_volume',
+    'compute_skin_mesh_volume',
+    'compute_core_mesh_volume',
+    'compute_structural_mass',
     'get_base_wing',
     'OptimizationPostProcessor',
 ]

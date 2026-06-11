@@ -1,0 +1,19 @@
+==================================================
+  AeroStructural Optimization Diagnostic Log
+  Started: 2026-06-08T17:48:03.678418
+==================================================
+
+
+==================================================
+  Evaluation 001 Solver Call
+  Design Vector x: [0.001, 0.5, 0.0005]
+==================================================
+  -> CalculiX simulation deck written: scratch/test_triangles/opt_iter_001_mesh_sim.inp
+     Root nodes (clamped): 25
+     Tip nodes: 25
+     Tip load node: 105 (-1000.0 N in Z)
+     Web-to-Skin MPCs: 281
+     Web orientations defined: 25
+  -> Running CalculiX (ccx) with 8 threads ...
+  -> CalculiX solver completed successfully in 0.4s
+Eval 001 | Compliance: 1.413137e-03 N.m | Mass: 2.51 kg | Constraint Res: +3.2351 | Max Stress: 241.9 MPa | Elapsed: 2.1s

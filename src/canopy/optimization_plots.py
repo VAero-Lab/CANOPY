@@ -41,7 +41,10 @@ class OptimizationPostProcessor:
         # ── read convergence data from CSVs ──
         eval_ids     = np.arange(1, len(df) + 1)
         compliances  = df["Compliance"].values
-        vol_fracs    = df["VolFraction"].values
+        if "ConstraintResidual" in df.columns:
+            vol_fracs = df["ConstraintResidual"].values + 1.0
+        else:
+            vol_fracs = df["VolFraction"].values
         max_stresses = df["MaxStress"].values
 
         has_conv = False
@@ -206,7 +209,7 @@ class OptimizationPostProcessor:
 
         # Secondary Y-axis: stress and volume ratio
         ax_r = ax_c.twinx()
-        ax_r.set_ylabel("Max Von Mises [MPa] / Vol Ratio", color="#7aa2f7",
+        ax_r.set_ylabel("Max Von Mises [MPa] / Constraint Ratio", color="#7aa2f7",
                          fontsize=10, labelpad=8)
         ax_r.tick_params(axis="y", colors="#7aa2f7", labelsize=9)
         ax_r.spines["right"].set_color("#2b2b30")
@@ -228,11 +231,11 @@ class OptimizationPostProcessor:
         stress_line, = ax_r.plot([], [], "s-", color="#7aa2f7", lw=1.2, ms=3,
                                  label="Max σ_VM [MPa]", zorder=4, alpha=0.8)
         volfrac_line, = ax_r.plot([], [], "^-", color="#9ece6a", lw=1.2, ms=3,
-                                  label="Vol Ratio", zorder=4, alpha=0.8)
+                                  label="Constraint Ratio", zorder=4, alpha=0.8)
 
         # Combined legend
         lines_for_legend = [comp_line, eval_scatter, stress_line, volfrac_line]
-        labels_for_legend = ["Convergence", "Evaluations", "Max σ_VM [MPa]", "Vol Ratio"]
+        labels_for_legend = ["Convergence", "Evaluations", "Max σ_VM [MPa]", "Constraint Ratio"]
         if has_conv:
             lines_for_legend.insert(1, conv_scatter)
             labels_for_legend.insert(1, "Gen Best")
@@ -324,3 +327,76 @@ class OptimizationPostProcessor:
         ani.save(self.output_gif, writer="pillow", fps=3)
         print("Done!")
         plt.close(fig)
+
+    def export_vtu(self, mode: str = "all", specific_iter: int = None):
+        """
+        Converts saved .frd files in the output directory to .vtu format for ParaView.
+        
+        Parameters
+        ----------
+        mode : str
+            "all" : Convert all .frd files found in the directory.
+            "first_last" : Convert the first iteration, the last iteration, and the best final design.
+            "specific" : Convert only the iteration specified by `specific_iter`.
+        specific_iter : int, optional
+            The iteration number to convert if mode="specific".
+        """
+        import glob
+        from ccx2paraview import Converter
+        import logging
+        from .run_utils import split_vtu_file
+
+        logging.basicConfig(level=logging.WARNING)
+        print(f"\\n[Post-Processing] Converting .frd to .vtu (mode: {mode})...")
+
+        frd_files = []
+        if mode == "all":
+            frd_files = sorted(glob.glob(os.path.join(self.output_dir, "*.frd")))
+        elif mode == "specific":
+            if specific_iter is None:
+                print("Error: specific_iter must be provided when mode='specific'")
+                return
+            target = os.path.join(self.output_dir, f"opt_iter_{specific_iter:03d}_sim.frd")
+            if os.path.exists(target):
+                frd_files.append(target)
+            else:
+                print(f"File not found: {target}")
+        elif mode == "first_last":
+            # Best final
+            best_final = os.path.join(self.output_dir, "opt_best_final_wing.frd")
+            if os.path.exists(best_final):
+                frd_files.append(best_final)
+            
+            # Find all iter frd files to get first and last
+            iter_files = sorted(glob.glob(os.path.join(self.output_dir, "opt_iter_*_sim.frd")))
+            if iter_files:
+                frd_files.append(iter_files[0])  # First
+                if len(iter_files) > 1:
+                    frd_files.append(iter_files[-1]) # Last
+        else:
+            print(f"Unknown mode: {mode}")
+            return
+
+        # Remove duplicates while preserving order
+        frd_files = list(dict.fromkeys(frd_files))
+
+        if not frd_files:
+            print("No .frd files found to convert.")
+            return
+
+        for frd_path in frd_files:
+            vtu_path = frd_path.replace(".frd", ".vtu")
+            if os.path.exists(vtu_path):
+                print(f"  -> Skipping existing: {os.path.basename(vtu_path)}")
+                continue
+                
+            print(f"  -> Converting: {os.path.basename(frd_path)}")
+            try:
+                c = Converter(frd_path, ["vtu"])
+                c.run()
+                if os.path.exists(vtu_path):
+                    split_vtu_file(vtu_path)
+            except Exception as e:
+                print(f"  -> ccx2paraview conversion error on {frd_path}: {e}")
+        
+        print("Done converting VTU files.")

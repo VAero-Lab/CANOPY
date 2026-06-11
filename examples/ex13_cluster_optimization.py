@@ -183,7 +183,7 @@ def main():
     print("-" * 75)
     
     # Run the DE solver for robust global optimization
-    results = optimizer.optimize(method="cobyla", max_iter=300, popsize=3)
+    results = optimizer.optimize(method="cobyla", max_iter=40, popsize=3)
     print("-" * 75)
     print("Cluster optimization completed successfully!")
     print(f"  Total solver calls: {results['iterations']}")
@@ -202,6 +202,7 @@ def main():
     print("\n[Post-Processing] Generating convergence animation...")
     post_processor = cp.OptimizationPostProcessor(OUT)
     post_processor.animate_history(build_topology, aero_wing, wing)
+    post_processor.export_vtu(mode="all")
 
 if __name__ == "__main__":
     main()

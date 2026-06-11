@@ -121,7 +121,7 @@ def main():
     
     # ── Visualize the 1D graph for reference ──
     viz_fw = cp.Viz(wing)
-    fig = viz_cp.view3d(segs)
+    fig = viz_fw.view3d(segs)
     fig.savefig(os.path.join(OUT, 'ex08_organic_graph.png'), dpi=150, bbox_inches='tight')
     plt.close(fig)
 

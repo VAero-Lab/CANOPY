@@ -39,7 +39,7 @@ FOAM_EPO = {
     "name": "FOAM_EPO",
     "E": 35e6,          # Pa
     "nu": 0.3,
-    "density": 35.0,    # kg/m^3
+    "density": 25.0,    # kg/m^3
 }
 
 
@@ -199,6 +199,7 @@ def build_ccx_deck(
     beam_wall_thickness_ratio: float = 0.2,
     nlgeom: bool = False,
     isotropic: bool = None,
+    dat_output: bool = True,
 ) -> str:
     """
     Build a complete CalculiX simulation deck from a Gmsh mesh .inp file.
@@ -612,6 +613,14 @@ def build_ccx_deck(
         lines.append('U')
         lines.append('*EL FILE')
         lines.append('S')
+    
+    if dat_output:
+        lines.append('**')
+        lines.append('*NODE PRINT, NSET=NALL')
+        lines.append('U')
+        lines.append('*EL PRINT, ELSET=WingSkin')
+        lines.append('S')
+
     lines.append('**')
     lines.append('*END STEP')
 

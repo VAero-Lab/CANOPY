@@ -33,6 +33,16 @@ CFRP_T300 = {
     "G13": 5.0e9,  # Pa
     "G23": 3.5e9,  # Pa  (Transverse shear)
     "density": 1600.0,  # kg/m^3
+    # Strength properties for Tsai-Wu Failure Index (Pa)
+    "Xt": 1500e6,  # Longitudinal tensile strength
+    "Xc": 1200e6,  # Longitudinal compressive strength
+    "Yt": 50e6,    # Transverse tensile strength
+    "Yc": 250e6,   # Transverse compressive strength
+    "Zt": 50e6,    # Through-thickness tensile
+    "Zc": 250e6,   # Through-thickness compressive
+    "S12": 70e6,   # In-plane shear strength
+    "S13": 70e6,   # Transverse shear 13
+    "S23": 50e6,   # Transverse shear 23
 }
 
 FOAM_EPO = {

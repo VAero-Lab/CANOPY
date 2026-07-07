@@ -14,6 +14,7 @@ import time
 import copy
 import csv
 import numpy as np
+from canopy.fem_solver import CFRP_T300
 from contextlib import contextmanager
 
 
@@ -102,13 +103,17 @@ def parse_ccx_dat_displacements(dat_path: str) -> dict[int, list[float]]:
     return displacements
 
 
-def parse_ccx_dat_stresses(dat_path: str) -> dict[int, float]:
+def parse_ccx_dat_stresses(dat_path: str, material: dict = None) -> dict[int, float]:
     """
-    Parses Von Mises stresses from the CalculiX .dat file.
+    Parses Von Mises or Tsai-Wu IRF from the CalculiX .dat file.
 
     The .dat stress block has the format (per element, per integration point):
         elem_id  integ_pt  sxx  syy  szz  sxy  sxz  syz  ELSET_NAME
-    We compute Von Mises from the 6 stress components in columns [2:8].
+    
+    If 'material' with Tsai-Wu strengths (Xt, Xc, Yt, etc.) is provided, 
+    calculates the 3D Inverse Reserve Factor (IRF). 
+    If IRF > 1.0, the material has failed.
+    Otherwise, computes the standard Von Mises stress.
     """
     stresses = {}
     if not os.path.isfile(dat_path):
@@ -134,16 +139,67 @@ def parse_ccx_dat_stresses(dat_path: str) -> dict[int, float]:
             if len(parts) >= 8:
                 try:
                     elem_id = int(parts[0])
-                    sxx = float(parts[2])
-                    syy = float(parts[3])
-                    szz = float(parts[4])
-                    sxy = float(parts[5])
-                    sxz = float(parts[6])
-                    syz = float(parts[7])
-                    # Von Mises stress
-                    vm = np.sqrt(0.5 * ((sxx - syy)**2 + (syy - szz)**2 + (szz - sxx)**2
-                                        + 6.0 * (sxy**2 + sxz**2 + syz**2)))
-                    stresses[elem_id] = max(stresses.get(elem_id, 0.0), vm)
+                    s11 = float(parts[2])
+                    s22 = float(parts[3])
+                    s33 = float(parts[4])
+                    s12 = float(parts[5])
+                    s13 = float(parts[6])
+                    s23 = float(parts[7])
+                    
+                    if material and "Xt" in material:
+                        # 3D Tsai-Wu Failure Index
+                        Xt = material["Xt"]
+                        Xc = material["Xc"]
+                        Yt = material["Yt"]
+                        Yc = material["Yc"]
+                        Zt = material["Zt"]
+                        Zc = material["Zc"]
+                        S12 = material["S12"]
+                        S13 = material["S13"]
+                        S23 = material["S23"]
+                        
+                        F1 = (1.0/Xt) - (1.0/Xc)
+                        F2 = (1.0/Yt) - (1.0/Yc)
+                        F3 = (1.0/Zt) - (1.0/Zc)
+                        F11 = 1.0 / (Xt * Xc)
+                        F22 = 1.0 / (Yt * Yc)
+                        F33 = 1.0 / (Zt * Zc)
+                        F44 = 1.0 / (S23**2)
+                        F55 = 1.0 / (S13**2)
+                        F66 = 1.0 / (S12**2)
+                        
+                        # Empirical interaction terms
+                        F12 = -0.5 * np.sqrt(F11 * F22)
+                        F13 = -0.5 * np.sqrt(F11 * F33)
+                        F23 = -0.5 * np.sqrt(F22 * F33)
+                        
+                        # Quadratic part (A)
+                        A = (F11 * s11**2 + F22 * s22**2 + F33 * s33**2 + 
+                             F66 * s12**2 + F55 * s13**2 + F44 * s23**2 +
+                             2.0 * F12 * s11 * s22 + 2.0 * F13 * s11 * s33 + 2.0 * F23 * s22 * s33)
+                        
+                        # Linear part (B)
+                        B = F1 * s11 + F2 * s22 + F3 * s33
+                        
+                        # Solve for Reserve Factor R: A*R^2 + B*R - 1 = 0
+                        if A > 1e-30:
+                            disc = B**2 + 4.0 * A
+                            if disc >= 0:
+                                R = (-B + np.sqrt(disc)) / (2.0 * A)
+                                if R > 0:
+                                    metric = 1.0 / R  # IRF
+                                else:
+                                    metric = 0.0
+                            else:
+                                metric = 0.0
+                        else:
+                            metric = 0.0
+                    else:
+                        # Standard Von Mises stress
+                        metric = np.sqrt(0.5 * ((s11 - s22)**2 + (s22 - s33)**2 + (s33 - s11)**2
+                                            + 6.0 * (s12**2 + s13**2 + s23**2)))
+                                            
+                    stresses[elem_id] = max(stresses.get(elem_id, 0.0), metric)
                 except ValueError:
                     pass
     return stresses
@@ -484,7 +540,7 @@ class AeroStructuralOptimizer:
         # Initialize history log (Raw Evaluations)
         with open(self.history_csv, "w", newline="") as f:
             writer = csv.writer(f)
-            header = ["Evaluation", "Compliance", "WebVolume", "Mass", "ConstraintResidual", "MaxStress", "ElapsedTime"]
+            header = ["Evaluation", "Compliance", "WebVolume", "Mass", "ConstraintResidual", "MaxIRF", "ElapsedTime"]
             for i in range(len(self.bounds)):
                 header.append(f"x_{i}")
             writer.writerow(header)
@@ -492,7 +548,7 @@ class AeroStructuralOptimizer:
         # Initialize convergence log (Algorithmic Iterations/Generations)
         with open(self.convergence_csv, "w", newline="") as f:
             writer = csv.writer(f)
-            header = ["Generation", "Evaluation", "Compliance", "WebVolume", "Mass", "ConstraintResidual", "MaxStress", "ElapsedTime"]
+            header = ["Generation", "Evaluation", "Compliance", "WebVolume", "Mass", "ConstraintResidual", "MaxIRF", "ElapsedTime"]
             for i in range(len(self.bounds)):
                 header.append(f"x_{i}")
             writer.writerow(header)
@@ -581,7 +637,7 @@ class AeroStructuralOptimizer:
 
         compliance = 1e10
         constraint_residual = 1.0
-        max_stress = 0.0
+        max_irf = 0.0
         web_vol = 0.0
         total_mass = 0.0
 
@@ -716,7 +772,7 @@ class AeroStructuralOptimizer:
 
                 if res["success"]:
                     displacements = parse_ccx_dat_displacements(sim_dat)
-                    stresses = parse_ccx_dat_stresses(sim_dat)
+                    stresses = parse_ccx_dat_stresses(sim_dat, material=CFRP_T300)
 
                     if displacements:
                         compliance = 0.0
@@ -729,7 +785,7 @@ class AeroStructuralOptimizer:
                             compliance = float(np.mean(u_mags))
 
                     if stresses:
-                        max_stress = float(max(stresses.values()))
+                        max_irf = float(max(stresses.values()))
 
                     web_vol = compute_web_mesh_volume(mesh_inp, props)
                     total_mass = compute_structural_mass(mesh_inp, props, self.skin_thickness)
@@ -808,7 +864,7 @@ class AeroStructuralOptimizer:
         msg = (
             f"Eval {self.iter_count:03d} | Compliance: {compliance:.6e} N.m | "
             f"Mass: {total_mass:.2f} kg | Constraint Res: {constraint_residual:+.4f} | "
-            f"Max Stress: {max_stress*1e-6:.1f} MPa | Elapsed: {elapsed:.1f}s"
+            f"Max IRF: {max_irf:.3f} | Elapsed: {elapsed:.1f}s"
         )
 
         with open(self.log_file, "a") as f_log:
@@ -820,7 +876,7 @@ class AeroStructuralOptimizer:
         # Raw evaluation logging (History)
         with open(self.history_csv, "a", newline="") as f:
             writer = csv.writer(f)
-            row = [self.iter_count, compliance, web_vol, total_mass, constraint_residual, max_stress, elapsed]
+            row = [self.iter_count, compliance, web_vol, total_mass, constraint_residual, max_irf, elapsed]
             row.extend(x.tolist())
             writer.writerow(row)
 
@@ -853,7 +909,7 @@ class AeroStructuralOptimizer:
         
         with open(self.convergence_csv, "a", newline="") as f:
             writer = csv.writer(f)
-            # Row: Generation, Evaluation, Compliance, WebVolume, Mass, ConstraintResidual, MaxStress, ElapsedTime
+            # Row: Generation, Evaluation, Compliance, WebVolume, Mass, ConstraintResidual, MaxIRF, ElapsedTime
             row = [self.gen_count, self.iter_count, comp, web_vol, total_mass, constraint_residual, 0.0, 0.0]
             row.extend(xk.tolist())
             writer.writerow(row)

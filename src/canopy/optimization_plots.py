@@ -45,7 +45,7 @@ class OptimizationPostProcessor:
             vol_fracs = df["ConstraintResidual"].values + 1.0
         else:
             vol_fracs = df["VolFraction"].values
-        max_stresses = df["MaxStress"].values
+        max_irfs = df["MaxIRF"].values
 
         has_conv = False
         if os.path.exists(self.convergence_csv):
@@ -207,9 +207,9 @@ class OptimizationPostProcessor:
             conv_scatter, = ax_c.plot([], [], "s", color="#ff5555", ms=5,
                                       label="Generation Best", zorder=6)
 
-        # Secondary Y-axis: stress and volume ratio
+        # Secondary Y-axis: IRF and volume ratio
         ax_r = ax_c.twinx()
-        ax_r.set_ylabel("Max Von Mises [MPa] / Constraint Ratio", color="#7aa2f7",
+        ax_r.set_ylabel("Tsai-Wu Inverse Reserve Factor (IRF) / Constraint Ratio", color="#7aa2f7",
                          fontsize=10, labelpad=8)
         ax_r.tick_params(axis="y", colors="#7aa2f7", labelsize=9)
         ax_r.spines["right"].set_color("#2b2b30")
@@ -218,8 +218,8 @@ class OptimizationPostProcessor:
         ax_r.spines["bottom"].set_color("#2b2b30")
 
         # Determine secondary axis range
-        stress_mpa = max_stresses * 1e-6
-        all_secondary = np.concatenate([stress_mpa[stress_mpa > 0], vol_fracs[vol_fracs > 0]])
+        irf_values = max_irfs
+        all_secondary = np.concatenate([irf_values[irf_values > 0], vol_fracs[vol_fracs > 0]])
         if len(all_secondary) > 0:
             sec_min = max(all_secondary.min() * 0.5, 1e-4)
             sec_max = all_secondary.max() * 3.0
@@ -228,14 +228,14 @@ class OptimizationPostProcessor:
         ax_r.set_yscale("log")
         ax_r.set_ylim(sec_min, sec_max)
 
-        stress_line, = ax_r.plot([], [], "s-", color="#7aa2f7", lw=1.2, ms=3,
-                                 label="Max σ_VM [MPa]", zorder=4, alpha=0.8)
+        irf_line, = ax_r.plot([], [], "s-", color="#7aa2f7", lw=1.2, ms=3,
+                                 label="Tsai-Wu IRF", zorder=4, alpha=0.8)
         volfrac_line, = ax_r.plot([], [], "^-", color="#9ece6a", lw=1.2, ms=3,
                                   label="Constraint Ratio", zorder=4, alpha=0.8)
 
         # Combined legend
-        lines_for_legend = [comp_line, eval_scatter, stress_line, volfrac_line]
-        labels_for_legend = ["Convergence", "Evaluations", "Max σ_VM [MPa]", "Constraint Ratio"]
+        lines_for_legend = [comp_line, eval_scatter, irf_line, volfrac_line]
+        labels_for_legend = ["Convergence", "Evaluations", "Tsai-Wu IRF", "Constraint Ratio"]
         if has_conv:
             lines_for_legend.insert(1, conv_scatter)
             labels_for_legend.insert(1, "Gen Best")
@@ -246,6 +246,9 @@ class OptimizationPostProcessor:
 
         # Vertical marker line showing current frame position
         vline = ax_c.axvline(x=1, color="#ff5555", lw=1.0, ls=":", alpha=0.6, zorder=6)
+        
+        # Horizontal failure line for IRF = 1.0
+        irf_fail_line = ax_r.axhline(y=1.0, color="#ff5555", lw=1.5, ls="--", alpha=0.6, zorder=1)
 
         fig.tight_layout()
 
@@ -303,10 +306,10 @@ class OptimizationPostProcessor:
             else:
                 comp_line.set_data(xs, comp_vals)
 
-            # Von Mises stress in MPa
-            sv = stress_mpa[:n].copy()
+            # Tsai-Wu IRF
+            sv = irf_values[:n].copy()
             sv[sv <= 0] = np.nan
-            stress_line.set_data(xs, sv)
+            irf_line.set_data(xs, sv)
 
             # Volume ratio
             vf = vol_fracs[:n].copy()
@@ -316,7 +319,7 @@ class OptimizationPostProcessor:
             # Vertical marker
             vline.set_xdata([data["eval"]])
 
-            return [lc, card_text, segs_text, comp_line, eval_scatter, stress_line, volfrac_line, vline] + ([conv_scatter] if has_conv else [])
+            return [lc, card_text, segs_text, comp_line, eval_scatter, irf_line, volfrac_line, vline, irf_fail_line] + ([conv_scatter] if has_conv else [])
 
         ani = animation.FuncAnimation(
             fig, update, frames=len(iterations_data),

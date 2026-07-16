@@ -24,3 +24,6 @@ Manifest.toml
 # Temporary VLM data files
 aero_input.json
 aero_loads.json
+
+#Batch scripts
+run_overnight.sh

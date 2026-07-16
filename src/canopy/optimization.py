@@ -706,6 +706,7 @@ class AeroStructuralOptimizer:
                     skin_thickness=self.skin_thickness,
                     mapped_aero_forces=current_loads,
                     binary_output=False,
+                    dat_output=False,
                 )
                 sim_dat = sim_inp.replace(".inp", ".dat")
 
@@ -750,7 +751,7 @@ class AeroStructuralOptimizer:
                 max_node, max_elem = get_max_ids_from_inp(mesh_inp)
                 custom_sets = (
                     f"\n*NSET, NSET=NSET_ALL_NODES, GENERATE\n1, {max_node}, 1\n"
-                    f"*ELSET, ELSET=EALL_ELEMS, GENERATE\n1, 9999999, 1\n" # Hardcode high max element to guarantee collection
+                    f"*ELSET, ELSET=EALL_ELEMS, GENERATE\n1, {max_elem}, 1\n"
                 )
 
                 if "*STEP" in deck_content:
@@ -768,7 +769,7 @@ class AeroStructuralOptimizer:
                     f_deck.write(deck_content)
 
                 # 6. Run ccx solver & postprocess inside SilenceAndCaptureOutput for perfect logs
-                res = cp.run_ccx(sim_inp, convert_vtu=False)
+                res = cp.run_ccx(sim_inp, n_threads=1, convert_vtu=False)
 
                 if res["success"]:
                     displacements = parse_ccx_dat_displacements(sim_dat)

@@ -960,7 +960,10 @@ class AeroStructuralOptimizer:
             return z
 
         def evaluate_cached_normalized(z):
-            x = z_to_x(z)
+            # Strictly clip normalized values to [0, 1] to prevent COBYLA 
+            # from taking steps outside the bounds and generating negative thicknesses
+            z_clipped = np.clip(z, 0.0, 1.0)
+            x = z_to_x(z_clipped)
             return self.evaluate_cached(x)
 
         z_init = x_to_z(x_init)
@@ -968,7 +971,8 @@ class AeroStructuralOptimizer:
 
         # Map normalized xk back to physical for callback
         def callback_wrapper(zk, convergence=None):
-            xk = z_to_x(zk)
+            zk_clipped = np.clip(zk, 0.0, 1.0)
+            xk = z_to_x(zk_clipped)
             self._optimization_callback(xk, convergence)
 
         print(f"  [Optimizer] Starting optimization with method: {method.upper()}...")

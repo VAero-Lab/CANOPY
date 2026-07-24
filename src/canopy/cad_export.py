@@ -96,35 +96,40 @@ def build_brep_webs(segs: List[Seg], aerowing,
         if trimmed_web is None:
             continue
 
-        # FIX: Avoid degenerate 3-edged webs at the trailing edge
-        if not as_solid and trimmed_web.is_valid and len(
-                trimmed_web.edges()) == 3:
-            # The web converged to a sharp point at the trailing edge.
-            # We pull the outboard tip inwards by 2% of the branch length.
-            cut_dist = length * 0.02
-            new_length = length - cut_dist
-            new_mid_x = mid_x - (cut_dist / 2.0) * dir_x[0]
-            new_mid_y = mid_y - (cut_dist / 2.0) * dir_x[1]
+        # build123d intersect can return a single Shape, or a ShapeList (list) if disjoint.
+        pieces = trimmed_web if isinstance(trimmed_web, (list, tuple)) else [trimmed_web]
+        
+        for piece in pieces:
+            if piece is None:
+                continue
+                
+            # FIX: Avoid degenerate 3-edged webs at the trailing edge
+            if not as_solid and hasattr(piece, 'is_valid') and piece.is_valid and len(piece.edges()) == 3:
+                # The web converged to a sharp point at the trailing edge.
+                # We pull the outboard tip inwards by 2% of the branch length.
+                cut_dist = length * 0.02
+                new_length = length - cut_dist
+                new_mid_x = mid_x - (cut_dist / 2.0) * dir_x[0]
+                new_mid_y = mid_y - (cut_dist / 2.0) * dir_x[1]
 
-            new_workplane = Plane(
-                origin=(
-                    new_mid_x,
-                    new_mid_y,
-                    0.0),
-                x_dir=dir_x,
-                z_dir=dir_z)
-            new_web_face = Face.make_rect(
-                new_length, 2 * Z_INF, plane=new_workplane)
-            try:
-                trimmed_web = new_web_face.intersect(wing_shape)
-            except Exception:
-                trimmed_web = None
-
-        # Verify it successfully intersected
-        if trimmed_web is not None and trimmed_web.is_valid:
-            webs.append(trimmed_web)
-            properties[len(webs) -
-                       1] = {"thickness": seg.thick, "level": seg.level, "id": i}
+                new_workplane = Plane(
+                    origin=(new_mid_x, new_mid_y, 0.0), x_dir=dir_x, z_dir=dir_z)
+                new_web_face = Face.make_rect(
+                    new_length, 2 * Z_INF, plane=new_workplane)
+                try:
+                    re_trimmed = new_web_face.intersect(wing_shape)
+                    re_pieces = re_trimmed if isinstance(re_trimmed, (list, tuple)) else [re_trimmed]
+                    
+                    for rp in re_pieces:
+                        if rp is not None and hasattr(rp, 'is_valid') and rp.is_valid:
+                            webs.append(rp)
+                            properties[len(webs) - 1] = {"thickness": seg.thick, "level": seg.level, "id": i}
+                except Exception:
+                    pass
+            else:
+                if hasattr(piece, 'is_valid') and piece.is_valid:
+                    webs.append(piece)
+                    properties[len(webs) - 1] = {"thickness": seg.thick, "level": seg.level, "id": i}
 
     # Combine webs into single CAD compound
     assembly = Compound(webs)

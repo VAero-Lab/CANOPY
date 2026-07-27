@@ -403,3 +403,44 @@ class OptimizationPostProcessor:
                 print(f"  -> ccx2paraview conversion error on {frd_path}: {e}")
         
         print("Done converting VTU files.")
+        
+    def export_cad(self, topology_builder, aero_w, filename="optimized_3d_structure"):
+        """
+        Parses opt_convergence.csv to extract the global best configuration,
+        rebuilds the topology, and exports it as Solid STEP and STL models.
+        """
+        if not os.path.exists(self.convergence_csv):
+            print(f"Error: {self.convergence_csv} not found. Cannot export CAD.")
+            return
+            
+        import pandas as pd
+        from .cad_export import export_solid_topology
+        
+        df = pd.read_csv(self.convergence_csv)
+        if df.empty:
+            print("Error: opt_convergence.csv is empty.")
+            return
+            
+        # Grab the absolute last row (best configuration in convergence file)
+        best_row = df.iloc[-1]
+        best_comp = float(best_row["Compliance"])
+        print(f"  [CAD Export] Extracting best configuration from convergence file (Compliance: {best_comp:.4e})")
+        
+        # Extract variables
+        x_cols = [c for c in df.columns if c.startswith("x_")]
+        x_cols.sort(key=lambda c: int(c.split('_')[1]))
+        x_opt = [float(best_row[col]) for col in x_cols]
+        
+        # Build wing obj for generator
+        from .aeroshape_adapter import AeroWingAdapter
+        wing_obj = AeroWingAdapter(aero_w, bm='full_wing')
+        
+        # Generate segments
+        try:
+            segs = topology_builder(x_opt, wing_obj)
+        except Exception as e:
+            print(f"  [CAD Export] Failed to build topology for CAD export: {e}")
+            return
+            
+        # Export
+        export_solid_topology(segs, aero_w, self.output_dir, filename=filename)

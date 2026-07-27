@@ -178,3 +178,51 @@ def export_solid_wing(aerowing, output_step: str):
 
     NurbsExporter.to_step(wing_solid, output_step)
     return wing_solid
+
+
+def export_solid_topology(segs: List[Seg], aerowing, output_dir: str, filename: str = "optimized_structure"):
+    """
+    Builds the 3D solid topology and exports it as both STEP and STL formats.
+    
+    Parameters
+    ----------
+    segs : list of Seg
+        The generated fractal segments.
+    aerowing : aeroshape.geometry.wings.MultiSegmentWing
+        The AeroShape wing model providing the OML Solid.
+    output_dir : str
+        Directory to save the exported CAD files.
+    filename : str
+        Base filename (without extension) for the exported files.
+        
+    Returns
+    -------
+    None
+    """
+    import os
+    import build123d
+    
+    print(f"  [CAD Export] Building 3D solid topology for '{filename}'...")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    step_path = os.path.join(output_dir, f"{filename}.step")
+    stl_path = os.path.join(output_dir, f"{filename}.stl")
+    skin_path = os.path.join(output_dir, f"{filename}_skin.step")
+    
+    # 1. Export hollow skin for reference
+    export_hollow_skin(aerowing, skin_path)
+    print(f"  [CAD Export] Exported skin reference to: {skin_path}")
+    
+    # 2. Build volumetric webs and export STEP
+    assembly, _ = build_brep_webs(segs, aerowing, as_solid=True, output_step=step_path)
+    print(f"  [CAD Export] Exported 3D Solid STEP to: {step_path}")
+    
+    # 3. Export STL
+    try:
+        if hasattr(build123d, "export_stl"):
+            build123d.export_stl(assembly, stl_path)
+        else:
+            assembly.export_stl(stl_path)
+        print(f"  [CAD Export] Exported 3D Solid STL to: {stl_path}")
+    except Exception as e:
+        print(f"  [CAD Export Error] Failed to export STL: {e}")

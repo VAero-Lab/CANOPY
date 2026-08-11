@@ -293,6 +293,8 @@ def make_graded_stations(
     depth_range: tuple = (3, 1),
     mode_sequence: List[str] | None = None,
     thick_frac_range: tuple = (0.8, 0.5),
+    length_ratios: List[float] | None = None,
+    min_length: float = 0.04,
     start: float = 0.02,
     end: float = 0.95,
 ) -> List[Station]:
@@ -322,6 +324,10 @@ def make_graded_stations(
         monopodial mid-span, and dichotomous near tip.
     thick_frac_range : (float, float)
         (root_thick_frac, tip_thick_frac).
+    length_ratios : list of float, optional
+        Child/parent length ratios per recursion level.
+    min_length : float
+        Minimum branch length before recursion halts.
     """
     positions = distribute_stations(
         n_stations, spacing, start, end, **(spacing_kwargs or {}),
@@ -352,9 +358,10 @@ def make_graded_stations(
         sub = SubParams(
             max_depth=max(depth, 1),
             angles=[ang],
-            length_ratios=[0.55],
-            thickness_ratios=[0.7],
+            length_ratios=length_ratios if length_ratios is not None else [0.60, 0.55, 0.50],
+            thickness_ratios=[0.7, 0.65, 0.60],
             mode=mode,
+            min_length=min_length,
         )
 
         bl = length * (1.0 - 0.4 * p)
